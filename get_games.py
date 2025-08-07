@@ -12,25 +12,32 @@ HEADERS = {
     'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/116.0'
 }
 
-# Configurez tqdm pour utiliser sys.stderr au lieu de sys.stdout
-tqdm.monitor_interval = 0  # Désactive le monitoring
-tqdm.write = lambda msg: sys.stderr.write(msg + '\n')  # Force l'écriture ligne par ligne
+# Détection du contexte systemd
+IS_SYSTEMD = 'journald' in os.environ.get('JOURNAL_STREAM', '')
 
 # Configuration du logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.StreamHandler(stream=sys.stdout)  # Force l'écriture vers stdout
+        logging.StreamHandler(stream=sys.stdout)
     ]
 )
-
 logger = logging.getLogger('chess-scraping')
-logger.addHandler(logging.StreamHandler(stream=sys.stdout))
 
+# Configuration des dossiers
 PLAYERS_DIR = 'players'
 METADATA_FILE = 'metadata.json'
 os.makedirs(PLAYERS_DIR, exist_ok=True)
+
+class SystemdCompatibleTqdm(tqdm):
+    """Version de tqdm compatible avec systemd"""
+    def __init__(self, *args, **kwargs):
+        kwargs.update({
+            'disable': IS_SYSTEMD,
+            'bar_format': '{desc}: {percentage:.1f}%|{bar}| {n_fmt}/{total_fmt}'
+        })
+        super().__init__(*args, **kwargs)
 
 def init_metadata():
     """Initialise les métadonnées si elles n'existent pas"""
@@ -53,7 +60,7 @@ def get_player_file(username):
     return os.path.join(PLAYERS_DIR, f"{username}.json")
 
 def fetch_player_games(player, existing_ids):
-    """Récupère les nouvelles parties d'un joueur avec logging détaillé"""
+    """Récupère les nouvelles parties d'un joueur"""
     new_games = []
     username = player.get('username', 'inconnu')
 
@@ -62,7 +69,7 @@ def fetch_player_games(player, existing_ids):
         urls = requests.get(player["@id"]+"/games/archives", headers=HEADERS, timeout=10).json().get("archives", [])
         logger.info(f"{username}: {len(urls)} mois à traiter")
 
-        for url in tqdm(urls, desc=f"{username[:10]}...", leave=False):
+        for url in SystemdCompatibleTqdm(urls, desc=f"{username[:10]}", leave=False):
             try:
                 month_games = requests.get(url, headers=HEADERS, timeout=10).json().get("games", [])
                 new_count = sum(1 for game in month_games if game["url"].split('/')[-1] not in existing_ids)
@@ -87,6 +94,7 @@ def fetch_player_games(player, existing_ids):
     return new_games
 
 def process_players(players_list):
+    """Traite la liste des joueurs"""
     init_metadata()
     metadata = load_metadata()
     existing_ids = set(metadata["ids"])
@@ -94,17 +102,19 @@ def process_players(players_list):
     logger.info(f"Début du traitement de {len(players_list)} joueurs")
     start_time = datetime.now()
 
-    for player in tqdm(players_list, desc="Joueurs traités"):
+    progress = SystemdCompatibleTqdm(players_list, desc="Traitement global")
+    for player in progress:
         username = player["username"]
-        player_file = get_player_file(username)
 
-        # Log de progression
-        logger.info(f"Traitement de {username}...")
+        if IS_SYSTEMD and progress.n % 10 == 0:
+            logger.info(f"Progression: {progress.n}/{len(players_list)} joueurs traités")
 
         try:
             new_games = fetch_player_games(player, existing_ids)
 
             if new_games:
+                player_file = get_player_file(username)
+
                 # Charger/initialiser
                 if os.path.exists(player_file):
                     with open(player_file, 'r') as f:
@@ -143,29 +153,14 @@ def process_players(players_list):
     logger.info(f"Traitement terminé en {duration}. {len(existing_ids)} parties au total")
 
 def main():
+    """Point d'entrée principal"""
     # Charger la liste des joueurs à traiter
     with open('top_players.json', 'r', encoding='utf-8') as f:
         players = json.load(f)["players"]
 
     # Lancer le traitement
     process_players(players)
-    print("\nTraitement terminé avec succès !")
-    get_players.main()
-    main()
-
-def build_full_export():
-    metadata = load_metadata()
-    full_data = {
-        "ids": metadata["ids"],
-        "by_username": {}
-    }
-
-    for username in metadata["usernames"]:
-        with open(get_player_file(username), 'r') as f:
-            full_data["by_username"][username] = json.load(f)
-
-    with open('full_export.json', 'w') as f:
-        json.dump(full_data, f, indent=2)
+    logger.info("Traitement terminé avec succès !")
 
 if __name__ == "__main__":
     main()

@@ -4,25 +4,8 @@ import get_players
 import get_games
 import others
 import subprocess
-import tqdm
-import sys
-import logging
 
 app = Flask(__name__)
-
-# Configurez tqdm pour utiliser sys.stderr au lieu de sys.stdout
-tqdm.monitor_interval = 0  # Désactive le monitoring
-tqdm.write = lambda msg: sys.stderr.write(msg + '\n')  # Force l'écriture ligne par ligne
-
-
-# Configuration du logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stderr)  # Tout vers stderr
-    ]
-)
 
 # Configuration des logs
 LOG_SERVICE_NAME = "chess-scraping"
