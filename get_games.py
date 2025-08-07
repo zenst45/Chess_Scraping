@@ -1,8 +1,6 @@
 import os
 import json
 import requests
-from tqdm import tqdm
-import get_players
 import logging
 from datetime import datetime
 import sys
@@ -11,9 +9,6 @@ import sys
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/116.0'
 }
-
-# Détection du contexte systemd
-IS_SYSTEMD = 'journald' in os.environ.get('JOURNAL_STREAM', '')
 
 # Configuration du logging
 logging.basicConfig(
@@ -29,15 +24,6 @@ logger = logging.getLogger('chess-scraping')
 PLAYERS_DIR = 'players'
 METADATA_FILE = 'metadata.json'
 os.makedirs(PLAYERS_DIR, exist_ok=True)
-
-class SystemdCompatibleTqdm(tqdm):
-    """Version de tqdm compatible avec systemd"""
-    def __init__(self, *args, **kwargs):
-        kwargs.update({
-            'disable': IS_SYSTEMD,
-            'bar_format': '{desc}: {percentage:.1f}%|{bar}| {n_fmt}/{total_fmt}'
-        })
-        super().__init__(*args, **kwargs)
 
 def init_metadata():
     """Initialise les métadonnées si elles n'existent pas"""
@@ -69,7 +55,10 @@ def fetch_player_games(player, existing_ids):
         urls = requests.get(player["@id"]+"/games/archives", headers=HEADERS, timeout=10).json().get("archives", [])
         logger.info(f"{username}: {len(urls)} mois à traiter")
 
-        for url in SystemdCompatibleTqdm(urls, desc=f"{username[:10]}", leave=False):
+        for i, url in enumerate(urls, 1):
+            if i % 10 == 0 or i == len(urls):  # Log tous les 10 mois
+                logger.info(f"{username}: Mois {i}/{len(urls)} traités")
+
             try:
                 month_games = requests.get(url, headers=HEADERS, timeout=10).json().get("games", [])
                 new_count = sum(1 for game in month_games if game["url"].split('/')[-1] not in existing_ids)
@@ -102,12 +91,11 @@ def process_players(players_list):
     logger.info(f"Début du traitement de {len(players_list)} joueurs")
     start_time = datetime.now()
 
-    progress = SystemdCompatibleTqdm(players_list, desc="Traitement global")
-    for player in progress:
+    for i, player in enumerate(players_list, 1):
         username = player["username"]
 
-        if IS_SYSTEMD and progress.n % 10 == 0:
-            logger.info(f"Progression: {progress.n}/{len(players_list)} joueurs traités")
+        if i % 10 == 0 or i == len(players_list):  # Log tous les 10 joueurs
+            logger.info(f"Progression: {i}/{len(players_list)} joueurs traités")
 
         try:
             new_games = fetch_player_games(player, existing_ids)

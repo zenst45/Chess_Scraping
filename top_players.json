@@ -12738,6 +12738,29 @@
       "win_count": 0,
       "loss_count": 0,
       "draw_count": 0
+    },
+    {
+      "player_id": 142147655,
+      "@id": "https://api.chess.com/pub/player/jinbolqw",
+      "url": "https://www.chess.com/member/jinbolqw",
+      "username": "jinbolqw",
+      "score": 9325,
+      "rank": 50,
+      "country": "https://api.chess.com/pub/country/US",
+      "status": "premium",
+      "avatar": "https://images.chesscomfiles.com/uploads/v1/user/142147655.ad32ea4c.200x200o.ce95a0b29e85.png",
+      "trend_score": {
+        "direction": 1,
+        "delta": 165
+      },
+      "trend_rank": {
+        "direction": 1,
+        "delta": 3
+      },
+      "flair_code": "nothing",
+      "win_count": 0,
+      "loss_count": 0,
+      "draw_count": 0
     }
   ],
   "ids": [
@@ -13267,6 +13290,7 @@
     74676532,
     126056364,
     166317297,
-    20371314
+    20371314,
+    142147655
   ]
 }
