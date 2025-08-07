@@ -56,7 +56,7 @@ def fetch_player_games(player, existing_ids):
         logger.info(f"{username}: {len(urls)} mois à traiter")
 
         for i, url in enumerate(urls, 1):
-            if len(urls) / 2 == i or i == len(urls):  # Log tous les 10 mois
+            if int(len(urls) / 2) == i or i == len(urls):  # Log tous les 10 mois
                 logger.info(f"{username}: Mois {i}/{len(urls)} traités")
 
             try:
