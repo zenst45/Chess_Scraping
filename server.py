@@ -8,6 +8,7 @@ app = Flask(__name__)
 def update_players():
     get_players.main()
     get_games.main()
+    return "Update des joueurs et de la db lancé"
 
 @app.route('/api/get/', methods=['GET'])
 def get():

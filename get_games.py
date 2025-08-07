@@ -2,6 +2,7 @@ import os
 import json
 import requests
 from tqdm import tqdm
+import get_players
 
 # Configuration
 HEADERS = {
@@ -98,6 +99,8 @@ def main():
     # Lancer le traitement
     process_players(players)
     print("\nTraitement terminé avec succès !")
+    get_players.main()
+    main()
 
 def build_full_export():
     metadata = load_metadata()
