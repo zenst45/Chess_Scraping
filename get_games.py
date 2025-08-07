@@ -127,6 +127,9 @@ def process_players(players_list):
                 if username not in metadata["usernames"]:
                     metadata["usernames"].append(username)
 
+                metadata["ids"] = list(existing_ids)
+                save_metadata(metadata)
+
                 logger.debug(f"{username}: {len(new_games)} parties sauvegardées")
 
         except Exception as e:
