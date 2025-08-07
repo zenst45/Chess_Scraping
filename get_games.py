@@ -3,11 +3,24 @@ import json
 import requests
 from tqdm import tqdm
 import get_players
+import logging
+from datetime import datetime
 
 # Configuration
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/116.0'
 }
+
+# Configuration du logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('chess_scraping.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 PLAYERS_DIR = 'players'
 METADATA_FILE = 'metadata.json'
@@ -34,18 +47,37 @@ def get_player_file(username):
     return os.path.join(PLAYERS_DIR, f"{username}.json")
 
 def fetch_player_games(player, existing_ids):
-    """Récupère les nouvelles parties d'un joueur"""
+    """Récupère les nouvelles parties d'un joueur avec logging détaillé"""
     new_games = []
+    username = player.get('username', 'inconnu')
+
     try:
+        logger.info(f"Début du traitement pour {username}")
         urls = requests.get(player["@id"]+"/games/archives", headers=HEADERS, timeout=10).json().get("archives", [])
-        for url in urls:
-            month_games = requests.get(url, headers=HEADERS, timeout=10).json().get("games", [])
-            for game in month_games:
-                game_id = game["url"].split('/')[-1]
-                if game_id not in existing_ids:
-                    new_games.append(game)
+        logger.info(f"{username}: {len(urls)} mois à traiter")
+
+        for url in tqdm(urls, desc=f"{username[:10]}...", leave=False):
+            try:
+                month_games = requests.get(url, headers=HEADERS, timeout=10).json().get("games", [])
+                new_count = sum(1 for game in month_games if game["url"].split('/')[-1] not in existing_ids)
+
+                if new_count > 0:
+                    logger.debug(f"{username}: {new_count} nouvelles parties dans {url.split('/')[-1]}")
+
+                for game in month_games:
+                    game_id = game["url"].split('/')[-1]
+                    if game_id not in existing_ids:
+                        new_games.append(game)
+
+            except Exception as e:
+                logger.error(f"Erreur sur le mois {url} pour {username}: {str(e)}")
+                continue
+
+        logger.info(f"{username}: {len(new_games)} nouvelles parties trouvées")
+
     except Exception as e:
-        print(f"\nErreur pour {player.get('username')}: {str(e)}")
+        logger.error(f"Erreur majeure pour {username}: {str(e)}", exc_info=True)
+
     return new_games
 
 def process_players(players_list):
@@ -53,43 +85,56 @@ def process_players(players_list):
     metadata = load_metadata()
     existing_ids = set(metadata["ids"])
 
-    for player in tqdm(players_list, desc="Traitement des joueurs"):
+    logger.info(f"Début du traitement de {len(players_list)} joueurs")
+    start_time = datetime.now()
+
+    for player in tqdm(players_list, desc="Joueurs traités"):
         username = player["username"]
         player_file = get_player_file(username)
 
-        # Charger/initialiser les données du joueur
-        if os.path.exists(player_file):
-            with open(player_file, 'r') as f:
-                player_data = json.load(f)
-        else:
-            player_data = {
-                "player_info": player,
-                "games": [],
-                "game_ids": []
-            }
+        # Log de progression
+        logger.info(f"Traitement de {username}...")
 
-        # Récupérer les nouvelles parties
-        new_games = fetch_player_games(player, existing_ids)
+        try:
+            new_games = fetch_player_games(player, existing_ids)
 
-        # Mettre à jour les données
-        for game in new_games:
-            game_id = game["url"].split('/')[-1]
-            player_data["games"].append(game)
-            player_data["game_ids"].append(game_id)
-            existing_ids.add(game_id)
+            if new_games:
+                # Charger/initialiser
+                if os.path.exists(player_file):
+                    with open(player_file, 'r') as f:
+                        player_data = json.load(f)
+                else:
+                    player_data = {
+                        "player_info": player,
+                        "games": [],
+                        "game_ids": []
+                    }
 
-        # Sauvegarder le joueur
-        with open(player_file, 'w') as f:
-            json.dump(player_data, f, indent=2)
+                # Mise à jour
+                player_data["games"].extend(new_games)
+                player_data["game_ids"].extend(g["url"].split('/')[-1] for g in new_games)
 
-        # Mettre à jour ET sauvegarder les métadonnées à chaque joueur
-        if username not in metadata["usernames"]:
-            metadata["usernames"].append(username)
+                # Sauvegarde
+                with open(player_file, 'w') as f:
+                    json.dump(player_data, f, indent=2)
 
-        metadata["ids"] = list(existing_ids)  # Mise à jour des IDs
-        save_metadata(metadata)  # <-- SAUVEGARDE SYSTÉMATIQUE
+                # Metadata
+                existing_ids.update(g["url"].split('/')[-1] for g in new_games)
+                if username not in metadata["usernames"]:
+                    metadata["usernames"].append(username)
 
-    print("\nTraitement terminé !")
+                logger.debug(f"{username}: {len(new_games)} parties sauvegardées")
+
+        except Exception as e:
+            logger.error(f"Erreur critique sur {username}: {str(e)}", exc_info=True)
+            continue
+
+    # Sauvegarde finale metadata
+    metadata["ids"] = list(existing_ids)
+    save_metadata(metadata)
+
+    duration = datetime.now() - start_time
+    logger.info(f"Traitement terminé en {duration}. {len(existing_ids)} parties au total")
 
 def main():
     # Charger la liste des joueurs à traiter
