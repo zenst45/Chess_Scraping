@@ -5,22 +5,28 @@ from tqdm import tqdm
 import get_players
 import logging
 from datetime import datetime
+import sys
 
 # Configuration
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/116.0'
 }
 
+# Configurez tqdm pour utiliser sys.stderr au lieu de sys.stdout
+tqdm.monitor_interval = 0  # Désactive le monitoring
+tqdm.write = lambda msg: sys.stderr.write(msg + '\n')  # Force l'écriture ligne par ligne
+
 # Configuration du logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('chess_scraping.log'),
-        logging.StreamHandler()
+        logging.StreamHandler(stream=sys.stdout)  # Force l'écriture vers stdout
     ]
 )
-logger = logging.getLogger(__name__)
+
+logger = logging.getLogger('chess-scraping')
+logger.addHandler(logging.StreamHandler(stream=sys.stdout))
 
 PLAYERS_DIR = 'players'
 METADATA_FILE = 'metadata.json'
