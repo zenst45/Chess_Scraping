@@ -1,18 +1,17 @@
+from threading import Thread
 from flask import Flask
 import get_players
 import get_games
-import others
+
 app = Flask(__name__)
 
 @app.route('/api/update/', methods=['GET'])
 def update_players():
-    get_players.main()
-    get_games.main()
-    return "Update des joueurs et de la db lancé"
+    # Lancer les tâches longues dans un thread séparé
+    def background_task():
+        get_players.main()
+        get_games.main()
 
-@app.route('/api/get/', methods=['GET'])
-def get():
-    return [others.count_players()[0], others.count_games()]
+    Thread(target=background_task).start()
 
-if __name__ == '__main__':
-    app.run(host="0.0.0.0", debug=True, port=12346)
+    return "Mise à jour lancée en arrière-plan", 202  # Code 202 = Accepted
