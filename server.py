@@ -15,3 +15,6 @@ def update_players():
     Thread(target=background_task).start()
 
     return "Mise à jour lancée en arrière-plan", 202  # Code 202 = Accepted
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=12346, debug=False)
