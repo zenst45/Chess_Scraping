@@ -9,7 +9,7 @@ app = Flask(__name__)
 
 # Configuration des logs
 LOG_SERVICE_NAME = "chess-scraping"
-LOG_LINES = 200  # Nombre de lignes à retourner par défaut
+LOG_LINES = 1500  # Nombre de lignes à retourner par défaut
 
 def log_stream():
     """Générateur pour le streaming des logs"""
