@@ -10,7 +10,7 @@ def main():
     leaderboards = requests.get("https://api.chess.com/pub/leaderboards", headers=headers).json()
     # with open('data.json', 'r', encoding='utf-8') as f:
     #     leaderboards = json.load(f)
-    print(leaderboards)
+    # print(leaderboards)
 
     # Scroll des leaderboards
     for leaderboard in leaderboards.values():
