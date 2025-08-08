@@ -1,5 +1,6 @@
 import requests
 import json
+import get_games
 
 def main():
     with open('top_players.json', 'r', encoding='utf-8') as f:
@@ -24,3 +25,4 @@ def main():
 
     with open('top_players.json', 'w', encoding='utf-8') as f:
         json.dump(players, f, ensure_ascii=False, indent=2)
+    get_games.main()
