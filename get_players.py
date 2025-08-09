@@ -47,6 +47,7 @@ def main():
 
         # Récupérer les GMs
         gms = requests.get("https://api.chess.com/pub/titled/GM", headers=headers).json()
+        print(len(gms["players"]))
         new_gms = 0
 
         for username in gms["players"]:
@@ -63,6 +64,7 @@ def main():
                     })
                     players["ids"].append(player_id)
                     new_gms += 1
+                    print(new_gms)
 
             except Exception as e:
                 logger.error(f"Erreur avec le GM {username}: {str(e)}")
