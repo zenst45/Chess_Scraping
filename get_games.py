@@ -4,7 +4,7 @@ import requests
 import logging
 from datetime import datetime
 import sys
-import get_players
+import others
 
 # Configuration
 HEADERS = {
@@ -153,7 +153,4 @@ def main():
     # Lancer le traitement
     process_players(players)
     logger.info("Traitement terminé avec succès !")
-    get_players.main()
-
-if __name__ == "__main__":
-    main()
+    others.scan_players()
