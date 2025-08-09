@@ -68,7 +68,7 @@ def get():
 
 if __name__ == '__main__':
     # Démarrer les tâches de fond au lancement
-    Thread(target=get_players.main()).start()
+    Thread(target=lambda: [get_players.main()]).start()
 
     # Démarrer le serveur Flask
     app.run(
