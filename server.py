@@ -40,15 +40,16 @@ def stream_logs():
 
 @app.route('/api/logs/last/')
 def get_last_logs():
-    """Récupère les derniers logs (non-streaming)"""
     try:
         logs = subprocess.check_output(
             ['journalctl', '-u', LOG_SERVICE_NAME, '-n', str(LOG_LINES)],
             universal_newlines=True
         )
-        return logs, 200
+
+        return Response(logs, mimetype="text/plain")
+
     except subprocess.CalledProcessError as e:
-        return f"Erreur: {e}", 500
+        return Response(f"Erreur: {e}", status=500, mimetype="text/plain")
 
 @app.route('/api/update/', methods=['GET'])
 def update_players():
