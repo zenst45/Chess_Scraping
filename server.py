@@ -1,5 +1,5 @@
 from threading import Thread
-from flask import Flask, Response
+from flask import Flask, Response, send_file, jsonify
 import get_players
 import get_games
 import others
@@ -8,6 +8,25 @@ import os
 import json
 
 app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return send_file('index.html')
+
+@app.route('/api/players/')
+def list_players():
+    players = []
+    all_games = []
+    players_dir = 'players/'
+    for f in os.listdir(players_dir):
+        if f.endswith('.json'):
+            with open(os.path.join(players_dir, f), encoding='utf-8') as fp:
+                d = json.load(fp)
+                p = d.get('player_info', {}).copy()
+                p['games_count'] = len(d.get('games', []))
+                all_games.extend(d.get('games', []))
+                players.append(p)
+    return jsonify({'players': players, 'games': all_games})
 
 # Configuration des logs
 LOG_SERVICE_NAME = "chess-scraping"
@@ -30,20 +49,6 @@ def log_stream():
             yield f"data: {line}\n\n"
     finally:
         process.terminate()
-
-@app.route('/api/players/')
-def list_players():
-    players = []
-    all_games = []
-    for f in os.listdir('players/'):
-        if f.endswith('.json'):
-            with open(f'players/{f}', encoding='utf-8') as fp:
-                d = json.load(fp)
-                p = d.get('player_info', {}).copy()
-                p['games_count'] = len(d.get('games', []))
-                all_games.extend(d.get('games', []))
-                players.append(p)
-    return {'players': players, 'games': all_games}
 
 @app.route('/api/logs/')
 def stream_logs():
