@@ -4,6 +4,8 @@ import get_players
 import get_games
 import others
 import subprocess
+import os
+import json
 
 app = Flask(__name__)
 
@@ -28,6 +30,20 @@ def log_stream():
             yield f"data: {line}\n\n"
     finally:
         process.terminate()
+
+@app.route('/api/players/')
+def list_players():
+    players = []
+    all_games = []
+    for f in os.listdir('players/'):
+        if f.endswith('.json'):
+            with open(f'players/{f}', encoding='utf-8') as fp:
+                d = json.load(fp)
+                p = d.get('player_info', {}).copy()
+                p['games_count'] = len(d.get('games', []))
+                all_games.extend(d.get('games', []))
+                players.append(p)
+    return {'players': players, 'games': all_games}
 
 @app.route('/api/logs/')
 def stream_logs():
