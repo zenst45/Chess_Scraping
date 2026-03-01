@@ -1,5 +1,6 @@
 from threading import Thread
 from flask import Flask, Response, send_file, jsonify
+from flask_cors import CORS
 import get_players
 import get_games
 import others
@@ -8,6 +9,7 @@ import os
 import json
 
 app = Flask(__name__)
+CORS(app)
 
 @app.route('/')
 def index():
