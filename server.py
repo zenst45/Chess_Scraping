@@ -18,17 +18,15 @@ def index():
 @app.route('/api/players/')
 def list_players():
     players = []
-    all_games = []
-    players_dir = 'players/'
-    for f in os.listdir(players_dir):
+    for f in os.listdir('players/'):
         if f.endswith('.json'):
-            with open(os.path.join(players_dir, f), encoding='utf-8') as fp:
+            with open(f'players/{f}') as fp:
                 d = json.load(fp)
-                p = d.get('player_info', {}).copy()
+                p = d.get('player_info', {})
                 p['games_count'] = len(d.get('games', []))
-                all_games.extend(d.get('games', []))
+                p['games'] = d.get('games', [])[:50]  # last 50
                 players.append(p)
-    return jsonify({'players': players, 'games': all_games})
+    return {'players': players, 'games': [g for p in players for g in p.pop('games', [])]}
 
 # Configuration des logs
 LOG_SERVICE_NAME = "chess-scraping"
