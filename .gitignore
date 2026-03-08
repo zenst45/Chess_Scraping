@@ -1,0 +1,10 @@
+venv/
+__pycache__/
+*.pyc
+chess.db
+chess.db-shm
+chess.db-wal
+metadata.json
+players/
+top_players.json
+*.swp
