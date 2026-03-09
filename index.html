@@ -254,8 +254,8 @@ async function checkServer(){
 async function fetchStats(){
   try{
     const d=await api('/api/get/');
-    document.getElementById('statP').textContent=(d.players_count||0).toLocaleString('fr');
-    document.getElementById('statG').textContent=(d.games_count||0).toLocaleString('fr');
+    document.getElementById('statP').textContent=((d.players?.match(/\d+/)?.[0]||0)*1).toLocaleString('fr');
+    document.getElementById('statG').textContent=((d.games?.match(/\d+/)?.[0]||0)*1).toLocaleString('fr');
     document.getElementById('statS').textContent='Actif';document.getElementById('statS').style.color='var(--green)';
     loadOverview();
   }catch{
@@ -266,7 +266,7 @@ async function fetchStats(){
 
 async function loadOverview(){
   try{
-    const d=await api('/api/players/',{per_page:8,sort:'games_desc'});
+    const d=await api('/api/players/',{limit:8,sort:'games_desc'});
     document.getElementById('ovP').innerHTML=d.players.length?d.players.map(p=>`
       <div onclick="openPlayer('${p.username}')" style="display:flex;align-items:center;gap:9px;padding:9px 11px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
         <div class="avatar">${p.avatar?`<img src="${p.avatar}" onerror="this.parentNode.textContent='${p.username[0].toUpperCase()}'">`:p.username[0].toUpperCase()}</div>
@@ -275,12 +275,12 @@ async function loadOverview(){
       </div>`).join(''):'<div class="empty">Aucun joueur</div>';
   }catch(e){document.getElementById('ovP').innerHTML=`<div class="empty">${e.message}</div>`}
   try{
-    const d=await api('/api/games/',{per_page:8});
+    const d=await api('/api/games/',{limit:8});
     document.getElementById('ovG').innerHTML=d.games.length?d.games.map(g=>{
       const badge=g.white_result==='win'?'<span class="badge bw">1-0</span>':g.black_result==='win'?'<span class="badge bl">0-1</span>':'<span class="badge bd">½</span>';
       const date=g.end_time?new Date(g.end_time*1000).toLocaleDateString('fr'):'';
       return `<div onclick="openGame('${g.game_id}')" style="display:flex;align-items:center;gap:8px;padding:8px 11px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
-        ${badge}<div style="flex:1;font-size:.75rem">${g.white_id||'?'} <span style="color:var(--muted)">vs</span> ${g.black_id||'?'}</div>
+        ${badge}<div style="flex:1;font-size:.75rem">${g.white_username||'?'} <span style="color:var(--muted)">vs</span> ${g.black_username||'?'}</div>
         <div style="font-size:.65rem;color:var(--muted)">${date}</div></div>`;
     }).join(''):'<div class="empty">Aucune partie</div>';
   }catch(e){document.getElementById('ovG').innerHTML=`<div class="empty">${e.message}</div>`}
@@ -289,7 +289,7 @@ async function loadOverview(){
 async function loadPlayers(){
   document.getElementById('pTable').innerHTML='<div class="loading"></div>';
   try{
-    const d=await api('/api/players/',{page:pPage,per_page:50,search:document.getElementById('pSearch').value,title:document.getElementById('pTitle').value,sort:document.getElementById('pSort').value});
+    const d=await api('/api/players/',{page:pPage,limit:50,search:document.getElementById('pSearch').value,title:document.getElementById('pTitle').value,sort:document.getElementById('pSort').value});
     document.getElementById('pTotal').textContent=`${d.total.toLocaleString('fr')} joueur(s)`;
     if(!d.players.length){document.getElementById('pTable').innerHTML='<div class="empty">Aucun joueur</div>';document.getElementById('pPag').innerHTML='';return}
     document.getElementById('pTable').innerHTML=`<table class="data-table"><thead><tr><th>#</th><th>Joueur</th><th>Titre</th><th>Parties</th><th>Lien</th></tr></thead><tbody>${
@@ -308,7 +308,7 @@ async function loadPlayers(){
 async function loadGames(){
   document.getElementById('gTable').innerHTML='<div class="loading"></div>';
   try{
-    const d=await api('/api/games/',{page:gPage,per_page:50,search:document.getElementById('gSearch').value,result:document.getElementById('gResult').value,time_class:document.getElementById('gTc').value,rated:document.getElementById('gRated').value});
+    const d=await api('/api/games/',{page:gPage,limit:50,search:document.getElementById('gSearch').value,result:document.getElementById('gResult').value,time_class:document.getElementById('gTc').value,rated:document.getElementById('gRated').value});
     document.getElementById('gTotal').textContent=`${d.total.toLocaleString('fr')} partie(s)`;
     if(!d.games.length){document.getElementById('gTable').innerHTML='<div class="empty">Aucune partie</div>';document.getElementById('gPag').innerHTML='';return}
     document.getElementById('gTable').innerHTML=`<table class="data-table"><thead><tr><th>Date</th><th>Blancs</th><th>Noirs</th><th>Résultat</th><th>Type</th><th>Cadence</th><th>Statut</th><th>Ouverture</th></tr></thead><tbody>${
@@ -317,12 +317,12 @@ async function loadGames(){
         const badge=g.white_result==='win'?'<span class="badge bw">1-0</span>':g.black_result==='win'?'<span class="badge bl">0-1</span>':'<span class="badge bd">½-½</span>';
         return `<tr onclick="openGame('${g.game_id}')">
           <td style="color:var(--muted)">${date}</td>
-          <td onclick="event.stopPropagation();openPlayer('${g.white_id}')" style="cursor:pointer">${g.white_id||'?'}${g.white_rating?` <span style="color:var(--muted);font-size:.68rem">(${g.white_rating})</span>`:''}
-          </td><td onclick="event.stopPropagation();openPlayer('${g.black_id}')" style="cursor:pointer">${g.black_id||'?'}${g.black_rating?` <span style="color:var(--muted);font-size:.68rem">(${g.black_rating})</span>`:''}
+          <td onclick="event.stopPropagation();openPlayer('${g.white_username}')" style="cursor:pointer">${g.white_username||'?'}${g.white_rating?` <span style="color:var(--muted);font-size:.68rem">(${g.white_rating})</span>`:''}
+          </td><td onclick="event.stopPropagation();openPlayer('${g.black_username}')" style="cursor:pointer">${g.black_username||'?'}${g.black_rating?` <span style="color:var(--muted);font-size:.68rem">(${g.black_rating})</span>`:''}
           </td><td>${badge}</td><td style="text-transform:capitalize;color:var(--muted)">${g.time_class||'—'}</td>
           <td style="color:var(--muted)">${fmtTc(g.time_control)}</td>
           <td>${g.rated?'<span class="badge br">Classé</span>':'<span class="badge bc">Amical</span>'}</td>
-          <td style="color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis">${g.opening||g.eco||'—'}</td>
+          <td style="color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis">${g.opening_name||g.opening_eco||'—'}</td>
         </tr>`;
       }).join('')
     }</tbody></table>`;
@@ -391,12 +391,12 @@ async function openPlayer(u){
 async function loadPlayerGames(u,page){
   document.getElementById('mGTab').innerHTML='<div class="loading"></div>';
   try{
-    const d=await api(`/api/players/${u}/games/`,{page,per_page:20});
+    const d=await api(`/api/games/`,{page,limit:20,username:u});
     if(!d.games.length){document.getElementById('mGTab').innerHTML='<div class="empty">Aucune partie</div>';return}
     const wrap=document.createElement('div');
     wrap.innerHTML=`<table class="data-table" style="font-size:.72rem"><thead><tr><th>Date</th><th>Adversaire</th><th>Couleur</th><th>Résultat</th><th>Type</th></tr></thead><tbody>${
       d.games.map(g=>{
-        const isW=g.white_id===u,opp=isW?g.black_id:g.white_id,res=isW?g.white_result:g.black_result;
+        const isW=g.white_username===u,opp=isW?g.black_username:g.white_username,res=isW?g.white_result:g.black_result;
         const badge=res==='win'?'<span class="badge bw">Victoire</span>':['agreed','stalemate','repetition','timevsinsufficient','50move'].includes(res)?'<span class="badge bd">Nulle</span>':'<span class="badge bl">Défaite</span>';
         const date=g.end_time?new Date(g.end_time*1000).toLocaleDateString('fr'):'—';
         return `<tr onclick="openGame('${g.game_id}')">
@@ -427,7 +427,7 @@ async function openGame(gid){
   document.getElementById('gmTitle').textContent='Chargement…';document.getElementById('gmBody').innerHTML='<div class="loading"></div>';
   try{
     const g=await api(`/api/games/${gid}/`);
-    const w=g.white_id||'?',b=g.black_id||'?';
+    const w=g.white_username||'?',b=g.black_username||'?';
     const score=g.white_result==='win'?'1 — 0':g.black_result==='win'?'0 — 1':'½ — ½';
     document.getElementById('gmTitle').textContent=`${w} vs ${b}`;
     document.getElementById('gmMeta').textContent=`${g.end_time?new Date(g.end_time*1000).toLocaleString('fr'):'—'} · ${g.time_class||''} · ${g.rated?'Classé':'Amical'}`;
@@ -442,7 +442,7 @@ async function openGame(gid){
         <span>Type : <b style="color:var(--white)">${g.time_class||'—'}</b></span>
         <span>Cadence : <b style="color:var(--white)">${fmtTc(g.time_control)}</b></span>
         ${g.eco?`<span>ECO : <b style="color:var(--white)">${g.eco}</b></span>`:''}
-        ${g.opening?`<span>Ouverture : <b style="color:var(--white)">${g.opening}</b></span>`:''}
+        ${g.opening_name?`<span>Ouverture : <b style="color:var(--white)">${g.opening_eco?g.opening_eco+' · ':''}${g.opening_name}</b></span>`:''`:''}
       </div>
       ${pgn}
       <div style="margin-top:14px"><a href="${g.url}" target="_blank" class="btn btn-ghost" style="font-size:.72rem">Analyser sur Chess.com ↗</a></div>`;

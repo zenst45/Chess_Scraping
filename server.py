@@ -41,7 +41,7 @@ def api_get():
 @app.route('/api/players/')
 def api_players():
     page   = max(0, int(request.args.get('page',  0)))
-    limit  = min(200, max(1, int(request.args.get('limit', 50))))
+    limit  = min(200, max(1, int(request.args.get('limit', request.args.get('per_page', 50)))))
     search = request.args.get('search', '').strip()
     title  = request.args.get('title',  '').strip()
     sort   = request.args.get('sort',   'username')
@@ -71,7 +71,7 @@ def api_players():
 @app.route('/api/games/')
 def api_games():
     page       = max(0, int(request.args.get('page',  0)))
-    limit      = min(200, max(1, int(request.args.get('limit', 50))))
+    limit      = min(200, max(1, int(request.args.get('limit', request.args.get('per_page', 50)))))
     search     = request.args.get('search',     '').strip()
     result     = request.args.get('result',     '').strip()
     time_class = request.args.get('time_class', '').strip()
@@ -108,7 +108,7 @@ def api_games():
     db.close()
     return jsonify({"total": total, "page": page, "limit": limit, "games": [dict(r) for r in rows]})
 
-@app.route('/api/games/<game_id>')
+@app.route('/api/games/<game_id>', strict_slashes=False)
 def api_game_detail(game_id):
     db  = get_db()
     row = db.execute("SELECT * FROM games WHERE game_id = ?", (game_id,)).fetchone()
@@ -117,7 +117,7 @@ def api_game_detail(game_id):
         return jsonify({"error": "Partie introuvable"}), 404
     return jsonify(dict(row))
 
-@app.route('/api/players/<username>')
+@app.route('/api/players/<username>', strict_slashes=False)
 def api_player_detail(username):
     db = get_db()
     player = db.execute("SELECT * FROM players WHERE username = ?", (username,)).fetchone()
