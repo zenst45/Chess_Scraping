@@ -1,16 +1,25 @@
-import os
+import sqlite3
 import get_players
 import get_games
 
+DB_FILE = 'chess.db'
+
+def get_db():
+    conn = sqlite3.connect(DB_FILE, timeout=30)
+    conn.row_factory = sqlite3.Row
+    return conn
+
 def count_games():
-    with open("metadata.json", "r", encoding="utf-8") as f:
-        nb_lignes = sum(1 for _ in f)-5-count_players()[1]
-    return f"Nombre de parties : {nb_lignes}"
+    db = get_db()
+    n  = db.execute("SELECT COUNT(*) FROM games").fetchone()[0]
+    db.close()
+    return f"Nombre de parties : {n}"
 
 def count_players():
-    dossier = "players/"
-    nb_fichiers = len([f for f in os.listdir(dossier) if os.path.isfile(os.path.join(dossier, f))])
-    return f"Nombre de joueurs : {nb_fichiers}", nb_fichiers
+    db = get_db()
+    n  = db.execute("SELECT COUNT(*) FROM players").fetchone()[0]
+    db.close()
+    return f"Nombre de joueurs : {n}", n
 
 def scan_players():
     get_players.main()

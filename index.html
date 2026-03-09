@@ -1,488 +1,537 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chess Archive</title>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
-    <style>
-        :root {
-          --bg:#0a0a0f;--surface:#111118;--surface2:#18181f;--border:#2a2a35;
-          --gold:#c8a96e;--gold2:#e8c98e;--white:#f0ede6;--muted:#6b6878;
-          --green:#4a9e6b;--red:#c45a5a;--draw:#7a7a9e;--accent:#8b6fff;
-        }
-        *{margin:0;padding:0;box-sizing:border-box}
-        body{background:var(--bg);color:var(--white);font-family:'JetBrains Mono',monospace;min-height:100vh;overflow-x:hidden}
-        body::before{content:'';position:fixed;inset:0;background-image:repeating-conic-gradient(#ffffff03 0% 25%,transparent 0% 50%);background-size:60px 60px;pointer-events:none;z-index:0}
-        .container{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:0 24px}
-        header{border-bottom:1px solid var(--border);padding:16px 0;position:sticky;top:0;background:rgba(10,10,15,.96);backdrop-filter:blur(12px);z-index:100}
-        .header-inner{display:flex;align-items:center;justify-content:space-between;gap:16px}
-        .logo{display:flex;align-items:center;gap:10px;flex-shrink:0}
-        .logo-icon{width:32px;height:32px;display:grid;grid-template-columns:1fr 1fr;gap:2px}
-        .logo-icon span{background:var(--gold);border-radius:2px}
-        .logo-icon span:nth-child(2),.logo-icon span:nth-child(3){background:var(--surface2);border:1px solid var(--border)}
-        .logo h1{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:900}
-        .logo h1 span{color:var(--gold)}
-        nav{display:flex;gap:4px}
-        nav button{background:none;border:1px solid transparent;color:var(--muted);padding:7px 14px;font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:4px;transition:all .2s}
-        nav button:hover{color:var(--white);border-color:var(--border)}
-        nav button.active{color:var(--gold);border-color:var(--gold);background:rgba(200,169,110,.08)}
-        .header-right{display:flex;align-items:center;gap:10px}
-        .status-dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
-        .status-dot.online{background:var(--green);box-shadow:0 0 7px var(--green);animation:pulse 2s infinite}
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-        .btn{padding:7px 18px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .2s;border:none}
-        .btn-primary{background:var(--gold);color:var(--bg);font-weight:600}
-        .btn-primary:hover{background:var(--gold2)}
-        .btn-primary:disabled{background:var(--border);color:var(--muted);cursor:default}
-        .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
-        .btn-ghost:hover{color:var(--white);border-color:var(--muted)}
-        .stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:24px 0}
-        .stat-card{background:var(--surface);padding:18px 22px;position:relative;overflow:hidden}
-        .stat-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),transparent);opacity:0;transition:opacity .3s}
-        .stat-card:hover::after{opacity:1}
-        .stat-label{font-size:.62rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:7px}
-        .stat-value{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;color:var(--gold);line-height:1}
-        .stat-sub{font-size:.62rem;color:var(--muted);margin-top:4px}
-        .section{display:none;padding:0 0 48px}
-        .section.active{display:block}
-        .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border)}
-        .section-title{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700}
-        .toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
-        .search-wrap{flex:1;min-width:180px;position:relative}
-        .search-wrap input{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--white);padding:9px 14px 9px 36px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:.78rem;outline:none;transition:border-color .2s}
-        .search-wrap input:focus{border-color:var(--gold)}
-        .search-wrap input::placeholder{color:var(--muted)}
-        .search-wrap::before{content:'⌕';position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:1rem}
-        select{background:var(--surface);border:1px solid var(--border);color:var(--white);padding:9px 14px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:.72rem;outline:none;cursor:pointer;transition:border-color .2s}
-        select:focus{border-color:var(--gold)}
-        .data-table{width:100%;border-collapse:collapse;font-size:.78rem}
-        .data-table th{text-align:left;padding:9px 14px;font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);border-bottom:1px solid var(--border);background:var(--surface);white-space:nowrap}
-        .data-table td{padding:11px 14px;border-bottom:1px solid rgba(42,42,53,.5);vertical-align:middle;white-space:nowrap}
-        .data-table tr{transition:background .15s;cursor:pointer}
-        .data-table tr:hover td{background:var(--surface)}
-        .player-cell{display:flex;align-items:center;gap:9px}
-        .avatar{width:30px;height:30px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--gold);flex-shrink:0;overflow:hidden}
-        .avatar img{width:100%;height:100%;object-fit:cover}
-        .ptitle{display:inline-block;background:rgba(200,169,110,.15);color:var(--gold);padding:1px 5px;border-radius:2px;font-size:.62rem;letter-spacing:.05em;margin-left:5px}
-        .badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:3px;font-size:.62rem;letter-spacing:.05em;font-weight:600;text-transform:uppercase}
-        .bw{background:rgba(74,158,107,.15);color:var(--green)}
-        .bl{background:rgba(196,90,90,.15);color:var(--red)}
-        .bd{background:rgba(122,122,158,.15);color:var(--draw)}
-        .br{background:rgba(139,111,255,.15);color:var(--accent)}
-        .bc{background:rgba(107,104,120,.15);color:var(--muted)}
-        .pagination{display:flex;align-items:center;justify-content:space-between;padding:14px 0;font-size:.72rem;color:var(--muted)}
-        .page-controls{display:flex;gap:3px}
-        .page-btn{background:var(--surface);border:1px solid var(--border);color:var(--muted);width:30px;height:30px;border-radius:3px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.72rem;transition:all .2s;font-family:'JetBrains Mono',monospace}
-        .page-btn:hover,.page-btn.active{color:var(--gold);border-color:var(--gold)}
-        .page-btn:disabled{opacity:.3;cursor:default;pointer-events:none}
-        .loading{text-align:center;padding:50px;color:var(--muted);font-size:.78rem}
-        .loading::before{content:'♟';display:block;font-size:1.8rem;margin-bottom:10px;animation:spin 1.5s linear infinite;color:var(--gold)}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        .empty{text-align:center;padding:50px;color:var(--muted);font-size:.78rem}
-        .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(5px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
-        .modal-overlay.open{display:flex}
-        .modal{background:var(--surface);border:1px solid var(--border);border-radius:8px;width:100%;max-width:820px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;animation:mIn .2s ease}
-        @keyframes mIn{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:none}}
-        .modal-header{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-        .modal-body{overflow-y:auto;padding:22px;flex:1}
-        .modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:4px;transition:color .2s}
-        .modal-close:hover{color:var(--white)}
-        .sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
-        .mstat{background:var(--surface2);border:1px solid var(--border);padding:12px;border-radius:4px;text-align:center}
-        .mstat-v{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--gold)}
-        .mstat-l{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
-        .rbar{display:flex;height:5px;border-radius:3px;overflow:hidden;margin:10px 0 3px}
-        .rw{background:var(--green)}.rd{background:var(--draw)}.rl{background:var(--red)}
-        .tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:14px}
-        .tab{padding:7px 14px;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;background:none;border-left:none;border-right:none;border-top:none;font-family:'JetBrains Mono',monospace}
-        .tab.active{color:var(--gold);border-bottom-color:var(--gold)}
-        .tab:hover:not(.active){color:var(--white)}
-        .tab-content{display:none}.tab-content.active{display:block}
-        .pgn-box{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:11px;font-size:.7rem;color:var(--muted);line-height:1.9;max-height:180px;overflow-y:auto;word-break:break-all}
-        .toast{position:fixed;bottom:22px;right:22px;background:var(--surface);border:1px solid var(--border);padding:11px 18px;border-radius:4px;font-size:.72rem;z-index:300;transform:translateY(70px);transition:transform .3s}
-        .toast.show{transform:none}
-        ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}::-webkit-scrollbar-thumb:hover{background:var(--muted)}
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chess Archive</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0a0a0f;--surface:#111118;--surface2:#18181f;--border:#2a2a35;--gold:#c8a96e;--gold2:#e8c98e;--white:#f0ede6;--muted:#6b6878;--green:#4a9e6b;--red:#c45a5a;--draw:#7a7a9e;--accent:#8b6fff}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--white);font-family:'JetBrains Mono',monospace;min-height:100vh;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;background-image:repeating-conic-gradient(#ffffff03 0% 25%,transparent 0% 50%);background-size:60px 60px;pointer-events:none;z-index:0}
+  .container{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:0 24px}
+  header{border-bottom:1px solid var(--border);padding:20px 0;position:sticky;top:0;background:rgba(10,10,15,.95);backdrop-filter:blur(12px);z-index:100}
+  .header-inner{display:flex;align-items:center;justify-content:space-between}
+  .logo{display:flex;align-items:center;gap:12px}
+  .logo-icon{width:36px;height:36px;display:grid;grid-template-columns:1fr 1fr;gap:2px}
+  .logo-icon span{background:var(--gold);border-radius:2px}
+  .logo-icon span:nth-child(2),.logo-icon span:nth-child(3){background:var(--surface2);border:1px solid var(--border)}
+  .logo h1{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:900;letter-spacing:.04em}
+  .logo h1 span{color:var(--gold)}
+  nav{display:flex;gap:4px}
+  nav button{background:none;border:1px solid transparent;color:var(--muted);padding:8px 16px;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:4px;transition:all .2s}
+  nav button:hover{color:var(--white);border-color:var(--border)}
+  nav button.active{color:var(--gold);border-color:var(--gold);background:rgba(200,169,110,.08)}
+  .header-actions{display:flex;align-items:center;gap:12px}
+  .status-dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+  .status-dot.online{background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .btn{padding:8px 20px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .2s;border:none}
+  .btn-primary{background:var(--gold);color:var(--bg);font-weight:600}
+  .btn-primary:hover{background:var(--gold2)}
+  .btn-primary:disabled{background:var(--border);color:var(--muted);cursor:default}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+  .btn-ghost:hover{color:var(--white);border-color:var(--muted)}
+  .stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:28px 0}
+  .stat-card{background:var(--surface);padding:20px 24px;position:relative;overflow:hidden}
+  .stat-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),transparent);opacity:0;transition:opacity .3s}
+  .stat-card:hover::after{opacity:1}
+  .stat-label{font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:8px}
+  .stat-value{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--gold);line-height:1}
+  .stat-sub{font-size:.65rem;color:var(--muted);margin-top:4px}
+  .section{display:none;padding:0 0 48px}
+  .section.active{display:block}
+  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+  .section-title{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700}
+  .toolbar{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+  .search-box{flex:1;min-width:200px;position:relative}
+  .search-box input{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--white);padding:10px 16px 10px 40px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:.8rem;transition:border-color .2s;outline:none}
+  .search-box input:focus{border-color:var(--gold)}
+  .search-box input::placeholder{color:var(--muted)}
+  .search-box::before{content:'⌕';position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:1.1rem}
+  select{background:var(--surface);border:1px solid var(--border);color:var(--white);padding:10px 16px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:.75rem;outline:none;cursor:pointer}
+  select:focus{border-color:var(--gold)}
+  .data-table{width:100%;border-collapse:collapse;font-size:.8rem}
+  .data-table th{text-align:left;padding:10px 16px;font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);border-bottom:1px solid var(--border);background:var(--surface);cursor:pointer;user-select:none;white-space:nowrap}
+  .data-table th:hover{color:var(--gold)}
+  .data-table td{padding:12px 16px;border-bottom:1px solid rgba(42,42,53,.5);vertical-align:middle;white-space:nowrap}
+  .data-table tr:hover td{background:var(--surface)}
+  .data-table tr{transition:background .15s;cursor:pointer}
+  .player-cell{display:flex;align-items:center;gap:10px}
+  .avatar{width:32px;height:32px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.75rem;color:var(--gold);flex-shrink:0;overflow:hidden}
+  .avatar img{width:100%;height:100%;object-fit:cover}
+  .player-title{display:inline-block;background:rgba(200,169,110,.15);color:var(--gold);padding:1px 6px;border-radius:2px;font-size:.65rem;letter-spacing:.06em;margin-left:6px}
+  .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:3px;font-size:.65rem;letter-spacing:.06em;font-weight:600;text-transform:uppercase}
+  .badge-win{background:rgba(74,158,107,.15);color:var(--green)}
+  .badge-loss{background:rgba(196,90,90,.15);color:var(--red)}
+  .badge-draw{background:rgba(122,122,158,.15);color:var(--draw)}
+  .badge-rated{background:rgba(139,111,255,.15);color:var(--accent)}
+  .badge-casual{background:rgba(107,104,120,.15);color:var(--muted)}
+  .pagination{display:flex;align-items:center;justify-content:space-between;padding:16px 0;font-size:.75rem;color:var(--muted)}
+  .page-controls{display:flex;gap:4px}
+  .page-btn{background:var(--surface);border:1px solid var(--border);color:var(--muted);width:32px;height:32px;border-radius:3px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.75rem;transition:all .2s;font-family:'JetBrains Mono',monospace}
+  .page-btn:hover,.page-btn.active{color:var(--gold);border-color:var(--gold)}
+  .page-btn:disabled{opacity:.3;cursor:default}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:24px}
+  .modal-overlay.open{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:8px;width:100%;max-width:820px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;animation:modalIn .2s ease}
+  @keyframes modalIn{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:none}}
+  .modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .modal-body{overflow-y:auto;padding:24px;flex:1}
+  .modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;padding:4px;transition:color .2s}
+  .modal-close:hover{color:var(--white)}
+  .player-stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+  .mini-stat{background:var(--surface2);border:1px solid var(--border);padding:14px;border-radius:4px;text-align:center}
+  .mini-stat-value{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;color:var(--gold)}
+  .mini-stat-label{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:4px}
+  .result-bar{display:flex;height:6px;border-radius:3px;overflow:hidden;margin:12px 0 4px}
+  .result-bar-win{background:var(--green)}
+  .result-bar-draw{background:var(--draw)}
+  .result-bar-loss{background:var(--red)}
+  .tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:16px}
+  .tab{padding:8px 16px;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;background:none;border-left:none;border-right:none;border-top:none;font-family:'JetBrains Mono',monospace}
+  .tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+  .tab-content{display:none}
+  .tab-content.active{display:block}
+  .pgn-box{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:12px;font-size:.75rem;color:var(--muted);line-height:1.8;max-height:200px;overflow-y:auto;word-break:break-all}
+  .loading{text-align:center;padding:60px;color:var(--muted);font-size:.8rem}
+  .loading::before{content:'♟';display:block;font-size:2rem;margin-bottom:12px;animation:rotate 1.5s linear infinite;color:var(--gold)}
+  @keyframes rotate{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  .empty-state{text-align:center;padding:60px;color:var(--muted)}
+  .empty-state .icon{font-size:3rem;margin-bottom:12px;opacity:.3}
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);padding:12px 20px;border-radius:4px;font-size:.75rem;z-index:300;transform:translateY(80px);transition:transform .3s}
+  .toast.show{transform:none}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+</style>
 </head>
 <body>
-<header><div class="container"><div class="header-inner">
-    <div class="logo">
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <div class="logo">
         <div class="logo-icon"><span></span><span></span><span></span><span></span></div>
         <h1>Chess <span>Archive</span></h1>
-    </div>
-    <nav>
+      </div>
+      <nav>
         <button class="active" data-section="overview">Vue d'ensemble</button>
         <button data-section="players">Joueurs</button>
         <button data-section="games">Parties</button>
         <button data-section="logs">Logs</button>
-    </nav>
-    <div class="header-right">
+      </nav>
+      <div class="header-actions">
         <div class="status-dot" id="statusDot"></div>
-        <span id="statusText" style="font-size:.68rem;color:var(--muted)">…</span>
+        <span id="statusText" style="font-size:.7rem;color:var(--muted)">Connexion...</span>
         <button class="btn btn-primary" id="updateBtn" onclick="triggerUpdate()">Mettre à jour</button>
+      </div>
     </div>
-</div></div></header>
-
+  </div>
+</header>
 <div class="container">
-    <!-- OVERVIEW -->
-    <div class="section active" id="section-overview">
-        <div class="stats-bar">
-            <div class="stat-card"><div class="stat-label">Joueurs</div><div class="stat-value" id="statP">—</div><div class="stat-sub">indexés en DB</div></div>
-            <div class="stat-card"><div class="stat-label">Parties</div><div class="stat-value" id="statG">—</div><div class="stat-sub">dans SQLite</div></div>
-            <div class="stat-card"><div class="stat-label">Source</div><div class="stat-value" style="font-size:1rem;margin-top:6px">Chess.com</div><div class="stat-sub">Leaderboard + GMs</div></div>
-            <div class="stat-card"><div class="stat-label">Serveur</div><div class="stat-value" id="statS" style="font-size:1rem;margin-top:6px">—</div><div class="stat-sub">port 12346</div></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px">
-            <div><div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:10px">Top joueurs (+ de parties)</div><div id="ovP"><div class="loading"></div></div></div>
-            <div><div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:10px">Dernières parties</div><div id="ovG"><div class="loading"></div></div></div>
-        </div>
+  <div class="section active" id="section-overview">
+    <div class="stats-bar">
+      <div class="stat-card"><div class="stat-label">Joueurs</div><div class="stat-value" id="statPlayers">—</div><div class="stat-sub">indexés en DB</div></div>
+      <div class="stat-card"><div class="stat-label">Parties</div><div class="stat-value" id="statGames">—</div><div class="stat-sub">toutes confondues</div></div>
+      <div class="stat-card"><div class="stat-label">Source</div><div class="stat-value" style="font-size:1.1rem;margin-top:4px">Chess.com</div><div class="stat-sub">Leaderboard + GMs</div></div>
+      <div class="stat-card"><div class="stat-label">Serveur</div><div class="stat-value" id="statStatus" style="font-size:1.1rem;margin-top:4px">—</div><div class="stat-sub">port 12346</div></div>
     </div>
-
-    <!-- PLAYERS -->
-    <div class="section" id="section-players">
-        <div class="section-header">
-            <div class="section-title">Joueurs</div>
-            <span id="pTotal" style="font-size:.72rem;color:var(--muted)"></span>
-        </div>
-        <div class="toolbar">
-            <div class="search-wrap"><input type="text" id="pSearch" placeholder="Rechercher un joueur…"></div>
-            <select id="pTitle"><option value="">Tous titres</option><option>GM</option><option>IM</option><option>FM</option><option>WGM</option><option>WIM</option><option>NM</option></select>
-            <select id="pSort"><option value="username">Nom A→Z</option><option value="games_desc">+ de parties</option><option value="games_asc">- de parties</option></select>
-        </div>
-        <div id="pTable"><div class="loading"></div></div>
-        <div class="pagination" id="pPag"></div>
+    <div class="section-header">
+      <div class="section-title">Dernières parties</div>
+      <button class="btn btn-ghost" onclick="showSection('games')">Voir tout →</button>
     </div>
-
-    <!-- GAMES -->
-    <div class="section" id="section-games">
-        <div class="section-header">
-            <div class="section-title">Parties</div>
-            <span id="gTotal" style="font-size:.72rem;color:var(--muted)"></span>
-        </div>
-        <div class="toolbar">
-            <div class="search-wrap"><input type="text" id="gSearch" placeholder="Joueur, ouverture…"></div>
-            <select id="gResult"><option value="">Tous résultats</option><option value="win">1 — 0</option><option value="loss">0 — 1</option><option value="draw">½ — ½</option></select>
-            <select id="gTc"><option value="">Tous types</option><option value="bullet">Bullet</option><option value="blitz">Blitz</option><option value="rapid">Rapid</option><option value="classical">Classical</option><option value="daily">Daily</option></select>
-            <select id="gRated"><option value="">Classé / Amical</option><option value="true">Classé</option><option value="false">Amical</option></select>
-        </div>
-        <div id="gTable"><div class="loading"></div></div>
-        <div class="pagination" id="gPag"></div>
+    <div id="recentGames"><div class="loading"></div></div>
+  </div>
+  <div class="section" id="section-players">
+    <div class="section-header">
+      <div class="section-title">Joueurs</div>
+      <span id="playersTotal" style="font-size:.75rem;color:var(--muted)"></span>
     </div>
-
-    <!-- LOGS -->
-    <div class="section" id="section-logs">
-        <div class="section-header">
-            <div class="section-title">Logs serveur</div>
-            <button class="btn btn-ghost" onclick="fetchLogs()">Rafraîchir</button>
-        </div>
-        <div id="logsBox" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px;font-size:.7rem;line-height:1.8;max-height:600px;overflow-y:auto"><div class="loading"></div></div>
+    <div class="toolbar">
+      <div class="search-box"><input type="text" id="playerSearch" placeholder="Rechercher..." oninput="debounce(loadPlayers,300)()"></div>
+      <select id="playerTitle" onchange="loadPlayers()">
+        <option value="">Tous les titres</option>
+        <option value="GM">GM</option><option value="IM">IM</option><option value="FM">FM</option><option value="WGM">WGM</option><option value="NM">NM</option>
+      </select>
+      <select id="playerSort" onchange="loadPlayers()">
+        <option value="games_desc">+ de parties</option>
+        <option value="username">Nom A→Z</option>
+        <option value="games_asc">- de parties</option>
+      </select>
     </div>
+    <div id="playersTableWrap"><div class="loading"></div></div>
+    <div class="pagination" id="playersPagination"></div>
+  </div>
+  <div class="section" id="section-games">
+    <div class="section-header">
+      <div class="section-title">Parties</div>
+      <span id="gamesTotal" style="font-size:.75rem;color:var(--muted)"></span>
+    </div>
+    <div class="toolbar">
+      <div class="search-box"><input type="text" id="gameSearch" placeholder="Joueur..." oninput="debounce(loadGames,300)()"></div>
+      <select id="gameResult" onchange="loadGames()">
+        <option value="">Tous résultats</option>
+        <option value="win">1-0</option><option value="loss">0-1</option><option value="draw">½-½</option>
+      </select>
+      <select id="gameTimeClass" onchange="loadGames()">
+        <option value="">Tous types</option>
+        <option value="bullet">Bullet</option><option value="blitz">Blitz</option><option value="rapid">Rapid</option><option value="classical">Classical</option><option value="daily">Daily</option>
+      </select>
+      <select id="gameRated" onchange="loadGames()">
+        <option value="">Classé + Amical</option>
+        <option value="true">Classé</option><option value="false">Amical</option>
+      </select>
+    </div>
+    <div id="gamesTableWrap"><div class="loading"></div></div>
+    <div class="pagination" id="gamesPagination"></div>
+  </div>
+  <div class="section" id="section-logs">
+    <div class="section-header">
+      <div class="section-title">Logs serveur</div>
+      <button class="btn btn-ghost" onclick="fetchLogs()">Rafraîchir</button>
+    </div>
+    <div id="logsContent" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:16px;font-size:.72rem;line-height:1.8;max-height:600px;overflow-y:auto;color:var(--muted)"><div class="loading"></div></div>
+  </div>
 </div>
-
-<!-- Player modal -->
-<div class="modal-overlay" id="playerModal" onclick="if(event.target===this)this.classList.remove('open')">
-    <div class="modal">
-        <div class="modal-header">
-            <div style="display:flex;align-items:center;gap:13px">
-                <div class="avatar" id="mAv" style="width:44px;height:44px;font-size:.9rem"></div>
-                <div><div style="font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700" id="mName"></div><div style="font-size:.68rem;color:var(--muted)" id="mMeta"></div></div>
-            </div>
-            <button class="modal-close" onclick="document.getElementById('playerModal').classList.remove('open')">✕</button>
+<div class="modal-overlay" id="playerModal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div class="avatar" id="modalAvatar" style="width:48px;height:48px;font-size:1rem"></div>
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700" id="modalName">—</div>
+          <div style="font-size:.7rem;color:var(--muted)" id="modalMeta">—</div>
         </div>
-        <div class="modal-body">
-            <div class="sgrid" id="mStats"></div>
-            <div class="tabs">
-                <button class="tab active" onclick="switchTab(this,'mGTab')">Parties</button>
-                <button class="tab" onclick="switchTab(this,'mITab')">Profil</button>
-            </div>
-            <div class="tab-content active" id="mGTab"><div class="loading"></div></div>
-            <div class="tab-content" id="mITab"></div>
-        </div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('playerModal').classList.remove('open')">✕</button>
     </div>
+    <div class="modal-body">
+      <div class="player-stats-grid" id="modalStats"><div class="loading" style="grid-column:1/-1"></div></div>
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab(this,'ptab-games')">Parties récentes</button>
+        <button class="tab" onclick="switchTab(this,'ptab-info')">Profil</button>
+      </div>
+      <div class="tab-content active" id="ptab-games"><div id="modalGames"><div class="loading"></div></div></div>
+      <div class="tab-content" id="ptab-info"><div id="modalInfo"></div></div>
+    </div>
+  </div>
 </div>
-
-<!-- Game modal -->
-<div class="modal-overlay" id="gameModal" onclick="if(event.target===this)this.classList.remove('open')">
-    <div class="modal">
-        <div class="modal-header">
-            <div><div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700" id="gmTitle"></div><div style="font-size:.68rem;color:var(--muted)" id="gmMeta"></div></div>
-            <button class="modal-close" onclick="document.getElementById('gameModal').classList.remove('open')">✕</button>
-        </div>
-        <div class="modal-body" id="gmBody"></div>
+<div class="modal-overlay" id="gameModal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700" id="gameModalTitle">—</div>
+        <div style="font-size:.7rem;color:var(--muted)" id="gameModalMeta">—</div>
+      </div>
+      <button class="modal-close" onclick="document.getElementById('gameModal').classList.remove('open')">✕</button>
     </div>
+    <div class="modal-body" id="gameModalBody"><div class="loading"></div></div>
+  </div>
 </div>
 <div class="toast" id="toast"></div>
-
 <script>
-    let pPage=0, gPage=0, st={};
+const PAGE_SIZE=50;
+let playerPage=0,gamePage=0;
+const dbPlayerCache={};
+async function checkPlayersInDB(usernames){
+  const toCheck=usernames.filter(u=>u&&u!=='?'&&dbPlayerCache[u]===undefined);
+  if(toCheck.length){
+    try{
+      const r=await fetch('/api/players/check/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usernames:toCheck})});
+      const data=await r.json();
+      Object.assign(dbPlayerCache,data);
+    }catch{}
+  }
+}
+function playerSpan(username,rating){
+  if(!username||username==='?') return '<span style="color:var(--muted)">?</span>';
+  const inDB=dbPlayerCache[username];
+  const color=inDB===true?'var(--green)':inDB===false?'var(--red)':'var(--muted)';
+  const cursor=inDB===true?'pointer':'default';
+  const click=inDB===true?`onclick="event.stopPropagation();openPlayer('${username}')"`:'' ;
+  const title=inDB===true?'Dans la DB':'Pas dans la DB';
+  return `<span ${click} style="color:${color};cursor:${cursor}" title="${title}">${username}</span>${rating?` <span style="color:var(--muted);font-size:.7rem">(${rating})</span>`:''}`;
+}
 
-    document.addEventListener('DOMContentLoaded',()=>{
-      document.querySelectorAll('nav button').forEach(btn=>{
-        btn.addEventListener('click',()=>{
-          document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
-          btn.classList.add('active');
-          const s=btn.dataset.section;
-          document.querySelectorAll('.section').forEach(el=>el.classList.remove('active'));
-          document.getElementById('section-'+s).classList.add('active');
-          if(s==='players')loadPlayers();
-          if(s==='games')loadGames();
-          if(s==='logs')fetchLogs();
-        });
-      });
-      const dbc=(id,fn,ms=350)=>document.getElementById(id).addEventListener('input',()=>{clearTimeout(st[id]);st[id]=setTimeout(fn,ms)});
-      dbc('pSearch',()=>{pPage=0;loadPlayers()});
-      dbc('gSearch',()=>{gPage=0;loadGames()});
-      ['pTitle','pSort'].forEach(id=>document.getElementById(id).addEventListener('change',()=>{pPage=0;loadPlayers()}));
-      ['gResult','gTc','gRated'].forEach(id=>document.getElementById(id).addEventListener('change',()=>{gPage=0;loadGames()}));
-      checkServer(); fetchStats();
-      document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'))});
+document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('nav button').forEach(btn=>{
+    btn.addEventListener('click',()=>showSection(btn.dataset.section,btn));
+  });
+  checkServer();
+  loadRecentGames();
+});
+
+async function api(path,params={}){
+  const qs=new URLSearchParams(params).toString();
+  const r=await fetch(qs?`${path}?${qs}`:path,{signal:AbortSignal.timeout(15000)});
+  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+function showSection(name,btn){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('section-'+name).classList.add('active');
+  if(btn) btn.classList.add('active');
+  else document.querySelector(`nav button[data-section="${name}"]`)?.classList.add('active');
+  if(name==='players'){playerPage=0;loadPlayers();}
+  if(name==='games'){gamePage=0;loadGames();}
+  if(name==='logs') fetchLogs();
+}
+
+async function checkServer(){
+  try{
+    const data=await api('/api/get/');
+    document.getElementById('statusDot').className='status-dot online';
+    document.getElementById('statusText').textContent='En ligne';
+    const pm=(data.players||'').match(/\d+/);
+    const gm=(data.games||'').match(/\d+/);
+    if(pm) document.getElementById('statPlayers').textContent=parseInt(pm[0]).toLocaleString('fr');
+    if(gm) document.getElementById('statGames').textContent=parseInt(gm[0]).toLocaleString('fr');
+    document.getElementById('statStatus').textContent='Actif';
+    document.getElementById('statStatus').style.color='var(--green)';
+  }catch{
+    document.getElementById('statusDot').className='status-dot';
+    document.getElementById('statusText').textContent='Hors ligne';
+    document.getElementById('statStatus').textContent='Inactif';
+    document.getElementById('statStatus').style.color='var(--red)';
+  }
+}
+
+async function loadRecentGames(){
+  const el=document.getElementById('recentGames');
+  try{
+    const data=await api('/api/games/',{page:0,limit:10});
+    const allUsers=[...new Set(data.games.flatMap(g=>[g.white_username,g.black_username]).filter(Boolean))];
+    await checkPlayersInDB(allUsers);
+    if(!data.games.length){el.innerHTML='<div class="empty-state"><div class="icon">♔</div>Aucune partie</div>';return;}
+    el.innerHTML=`<table class="data-table"><thead><tr><th>Date</th><th>Blancs</th><th>Noirs</th><th>Résultat</th><th>Type</th></tr></thead><tbody>${data.games.map(g=>gameRow(g)).join('')}</tbody></table>`;
+  }catch(e){
+    el.innerHTML=`<div class="empty-state"><div class="icon">♟</div>${e.message}</div>`;
+  }
+}
+
+async function loadPlayers(){
+  const wrap=document.getElementById('playersTableWrap');
+  wrap.innerHTML='<div class="loading"></div>';
+  try{
+    const data=await api('/api/players/',{page:playerPage,limit:PAGE_SIZE,search:document.getElementById('playerSearch').value.trim(),title:document.getElementById('playerTitle').value,sort:document.getElementById('playerSort').value});
+    document.getElementById('playersTotal').textContent=data.total.toLocaleString('fr')+' joueur(s)';
+    if(!data.players.length){wrap.innerHTML='<div class="empty-state"><div class="icon">♞</div>Aucun joueur</div>';document.getElementById('playersPagination').innerHTML='';return;}
+    wrap.innerHTML=`<table class="data-table"><thead><tr><th>#</th><th>Joueur</th><th>Titre</th><th>Parties</th><th>Chess.com</th></tr></thead><tbody>${data.players.map((p,i)=>`
+      <tr onclick="openPlayer('${p.username}')">
+        <td style="color:var(--muted)">${playerPage*PAGE_SIZE+i+1}</td>
+        <td><div class="player-cell">
+          <div class="avatar">${p.avatar?`<img src="${p.avatar}" onerror="this.parentNode.textContent='${p.username[0].toUpperCase()}'">`:p.username[0].toUpperCase()}</div>
+          <span style="font-weight:600">${p.username}</span>${p.title?`<span class="player-title">${p.title}</span>`:''}
+        </div></td>
+        <td>${p.title?`<span class="badge badge-rated">${p.title}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
+        <td style="color:var(--gold)">${p.games_count?p.games_count.toLocaleString('fr'):'—'}</td>
+        <td><a href="https://chess.com/member/${p.username}" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent);text-decoration:none">↗</a></td>
+      </tr>`).join('')}</tbody></table>`;
+    renderPagination('players',data.total,playerPage,p=>{playerPage=p;loadPlayers();});
+  }catch(e){wrap.innerHTML=`<div class="empty-state"><div class="icon">♞</div>${e.message}</div>`;}
+}
+
+async function loadGames(){
+  const wrap=document.getElementById('gamesTableWrap');
+  wrap.innerHTML='<div class="loading"></div>';
+  try{
+    const data=await api('/api/games/',{page:gamePage,limit:PAGE_SIZE,search:document.getElementById('gameSearch').value.trim(),result:document.getElementById('gameResult').value,time_class:document.getElementById('gameTimeClass').value,rated:document.getElementById('gameRated').value});
+    document.getElementById('gamesTotal').textContent=data.total.toLocaleString('fr')+' partie(s)';
+    const allU=[...new Set(data.games.flatMap(g=>[g.white_username,g.black_username]).filter(Boolean))];
+    await checkPlayersInDB(allU);
+    if(!data.games.length){wrap.innerHTML='<div class="empty-state"><div class="icon">♔</div>Aucune partie</div>';document.getElementById('gamesPagination').innerHTML='';return;}
+    wrap.innerHTML=`<table class="data-table"><thead><tr><th>Date</th><th>Blancs</th><th>Noirs</th><th>Résultat</th><th>Type</th><th>Cadence</th><th>Statut</th></tr></thead><tbody>${data.games.map(g=>gameRow(g)).join('')}</tbody></table>`;
+    renderPagination('games',data.total,gamePage,p=>{gamePage=p;loadGames();});
+  }catch(e){wrap.innerHTML=`<div class="empty-state"><div class="icon">♔</div>${e.message}</div>`;}
+}
+
+function gameRow(g){
+  const date=g.end_time?new Date(g.end_time*1000).toLocaleString('fr-FR',{timeZone:'Europe/Paris',day:'2-digit',month:'2-digit',year:'numeric'}):'—';
+  const w=g.white_username||'?',b=g.black_username||'?';
+  const DRAWS=['agreed','stalemate','repetition','timevsinsufficient','50move','insufficient'];
+  const badge=g.white_result==='win'?'<span class="badge badge-win">1-0</span>':DRAWS.includes(g.white_result)?'<span class="badge badge-draw">½-½</span>':'<span class="badge badge-loss">0-1</span>';
+  const rated=g.rated?'<span class="badge badge-rated">Classé</span>':'<span class="badge badge-casual">Amical</span>';
+  return `<tr onclick="openGame('${g.game_id}')">
+    <td style="color:var(--muted)">${date}</td>
+    <td>${playerSpan(w,g.white_rating)}</td>
+    <td>${playerSpan(b,g.black_rating)}</td>
+    <td>${badge}</td>
+    <td style="text-transform:capitalize;color:var(--muted)">${g.time_class||'—'}</td>
+    <td style="color:var(--muted)">${formatTC(g.time_control)}</td>
+    <td>${rated}</td>
+  </tr>`;
+}
+
+async function openPlayer(username){
+  document.getElementById('playerModal').classList.add('open');
+  document.getElementById('modalName').textContent=username;
+  document.getElementById('modalMeta').textContent='Chargement...';
+  document.getElementById('modalStats').innerHTML='<div class="loading" style="grid-column:1/-1"></div>';
+  document.getElementById('modalGames').innerHTML='<div class="loading"></div>';
+  try{
+    const[detail,gamesData]=await Promise.all([
+      api(`/api/players/${username}`),
+      api('/api/games/',{username,limit:50,page:0})
+    ]);
+    const p=detail.player,s=detail.stats;
+    const av=document.getElementById('modalAvatar');
+    av.innerHTML=p.avatar?`<img src="${p.avatar}" onerror="this.parentNode.textContent='${username[0].toUpperCase()}'">`:username[0].toUpperCase();
+    document.getElementById('modalName').innerHTML=username+(p.title?`<span class="player-title">${p.title}</span>`:'');
+    document.getElementById('modalMeta').textContent=`${s.total.toLocaleString('fr')} parties enregistrées`;
+    const wP=s.total?(s.wins/s.total*100).toFixed(1):0;
+    const dP=s.total?(s.draws/s.total*100).toFixed(1):0;
+    const lP=s.total?(s.losses/s.total*100).toFixed(1):0;
+    document.getElementById('modalStats').innerHTML=`
+      <div class="mini-stat"><div class="mini-stat-value">${s.total.toLocaleString('fr')}</div><div class="mini-stat-label">Parties</div></div>
+      <div class="mini-stat"><div class="mini-stat-value" style="color:var(--green)">${s.wins.toLocaleString('fr')}</div><div class="mini-stat-label">Victoires</div></div>
+      <div class="mini-stat"><div class="mini-stat-value" style="color:var(--red)">${s.losses.toLocaleString('fr')}</div><div class="mini-stat-label">Défaites</div></div>
+      <div class="mini-stat" style="grid-column:1/-1">
+        <div style="display:flex;justify-content:space-between;font-size:.65rem;color:var(--muted);margin-bottom:6px">
+          <span style="color:var(--green)">Victoires ${wP}%</span><span style="color:var(--draw)">Nulles ${dP}%</span><span style="color:var(--red)">Défaites ${lP}%</span>
+        </div>
+        <div class="result-bar"><div class="result-bar-win" style="width:${wP}%"></div><div class="result-bar-draw" style="width:${dP}%"></div><div class="result-bar-loss" style="width:${lP}%"></div></div>
+      </div>`;
+    const DRAWS=['agreed','stalemate','repetition','timevsinsufficient','50move','insufficient'];
+    document.getElementById('modalGames').innerHTML=gamesData.games.length?`
+      <table class="data-table"><thead><tr><th>Date</th><th>Adversaire</th><th>Couleur</th><th>Résultat</th><th>Type</th><th>Elo</th></tr></thead>
+      <tbody>${gamesData.games.map(g=>{
+        const isW=g.white_username===username;
+        const opp=isW?g.black_username:g.white_username;
+        const myRes=isW?g.white_result:g.black_result;
+        const badge=myRes==='win'?'<span class="badge badge-win">Victoire</span>':DRAWS.includes(g.white_result)?'<span class="badge badge-draw">Nulle</span>':'<span class="badge badge-loss">Défaite</span>';
+        const date=g.end_time?new Date(g.end_time*1000).toLocaleString('fr-FR',{timeZone:'Europe/Paris',day:'2-digit',month:'2-digit',year:'numeric'}):'—';
+        return `<tr onclick="document.getElementById('playerModal').classList.remove('open');openGame('${g.game_id}')">
+          <td style="color:var(--muted)">${date}</td>
+          <td onclick="event.stopPropagation();document.getElementById('playerModal').classList.remove('open');openPlayer('${opp}')" style="color:var(--accent);cursor:pointer">${opp}</td>
+          <td>${isW?'♔ Blancs':'♚ Noirs'}</td>
+          <td>${badge}</td>
+          <td style="text-transform:capitalize;color:var(--muted)">${g.time_class||'—'}</td>
+          <td style="color:var(--muted)">${isW?g.white_rating||'—':g.black_rating||'—'}</td>
+        </tr>`;
+      }).join('')}</tbody></table>`:'<div class="empty-state"><div class="icon">♔</div>Aucune partie</div>';
+    document.getElementById('modalInfo').innerHTML=`
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:.8rem;line-height:2">
+        <div><span style="color:var(--muted)">Username :</span> ${p.username}</div>
+        <div><span style="color:var(--muted)">Titre :</span> ${p.title||'—'}</div>
+        <div><span style="color:var(--muted)">Player ID :</span> ${p.player_id||'—'}</div>
+      </div>
+      <div style="margin-top:16px"><a href="https://chess.com/member/${username}" target="_blank" class="btn btn-ghost" style="font-size:.75rem">Voir sur Chess.com ↗</a></div>`;
+  }catch(e){
+    document.getElementById('modalStats').innerHTML=`<div style="color:var(--red);grid-column:1/-1">Erreur : ${e.message}</div>`;
+  }
+}
+
+async function openGame(gameId){
+  document.getElementById('gameModal').classList.add('open');
+  document.getElementById('gameModalTitle').textContent='Chargement...';
+  document.getElementById('gameModalMeta').textContent='';
+  document.getElementById('gameModalBody').innerHTML='<div class="loading"></div>';
+  try{
+    const g=await api(`/api/games/${gameId}`);
+    const DRAWS=['agreed','stalemate','repetition','timevsinsufficient','50move','insufficient'];
+    const w=g.white_username||'?',b=g.black_username||'?';
+    const score=g.white_result==='win'?'1-0':DRAWS.includes(g.white_result)?'½-½':'0-1';
+    const date=g.end_time?new Date(g.end_time*1000).toLocaleString('fr-FR',{timeZone:'Europe/Paris',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+    document.getElementById('gameModalTitle').textContent=`${w} vs ${b} — ${score}`;
+    document.getElementById('gameModalMeta').textContent=`${date} · ${g.time_class||''} · ${g.rated?'Classé':'Amical'}`;
+    const pgn=g.pgn?`<div style="margin-top:16px"><div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:8px">PGN</div><div class="pgn-box">${g.pgn.replace(/\[.*?\]\s*/gs,'').trim()}</div></div>`:'';
+    const opening=g.opening_name?`<div style="margin-top:12px;font-size:.75rem;color:var(--muted)">Ouverture : <b style="color:var(--white)">${g.opening_eco?g.opening_eco+' · ':''}${g.opening_name}</b></div>`:'';
+    document.getElementById('gameModalBody').innerHTML=`
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center">
+        <div class="mini-stat">
+          <div style="font-size:.65rem;color:var(--muted);margin-bottom:4px">♔ Blancs</div>
+          <div style="font-size:1rem;font-weight:700;cursor:pointer" onclick="document.getElementById('gameModal').classList.remove('open');openPlayer('${w}')">${w}</div>
+          <div style="font-size:.65rem;color:var(--muted)">${g.white_rating?'Elo '+g.white_rating:''}</div>
+        </div>
+        <div style="font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:900;color:var(--gold);text-align:center">${score}</div>
+        <div class="mini-stat" style="text-align:right">
+          <div style="font-size:.65rem;color:var(--muted);margin-bottom:4px">Noirs ♚</div>
+          <div style="font-size:1rem;font-weight:700;cursor:pointer" onclick="document.getElementById('gameModal').classList.remove('open');openPlayer('${b}')">${b}</div>
+          <div style="font-size:.65rem;color:var(--muted)">${g.black_rating?'Elo '+g.black_rating:''}</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;font-size:.75rem;color:var(--muted)">
+        Type : <b style="color:var(--white)">${g.time_class||'—'}</b>
+        <span style="margin:0 12px">Cadence : <b style="color:var(--white)">${formatTC(g.time_control)}</b></span>
+        ${g.rated?'<span class="badge badge-rated">Classé</span>':'<span class="badge badge-casual">Amical</span>'}
+      </div>
+      ${opening}${pgn}
+      <div style="margin-top:16px"><a href="${g.url}" target="_blank" class="btn btn-ghost" style="font-size:.75rem">Analyser sur Chess.com ↗</a></div>`;
+  }catch(e){
+    document.getElementById('gameModalBody').innerHTML=`<div style="color:var(--red)">Erreur : ${e.message}</div>`;
+  }
+}
+
+async function fetchLogs(){
+  const el=document.getElementById('logsContent');
+  el.innerHTML='<div class="loading"></div>';
+  try{
+    const r=await fetch('/api/logs/last/',{signal:AbortSignal.timeout(5000)});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const text=await r.text();
+    el.innerHTML='';
+    text.split('\n').forEach(line=>{
+      if(!line.trim()) return;
+      const div=document.createElement('div');
+      div.style.cssText='padding:1px 0;border-bottom:1px solid rgba(42,42,53,.3)';
+      if(line.includes('ERROR')) div.style.color='var(--red)';
+      else if(line.includes('INFO')) div.style.color='var(--white)';
+      else if(line.includes('WARNING')) div.style.color='var(--gold)';
+      div.textContent=line;
+      el.appendChild(div);
     });
+    el.scrollTop=el.scrollHeight;
+  }catch(e){el.innerHTML=`<div style="color:var(--red)">Impossible : ${e.message}</div>`;}
+}
 
-    async function api(path,params={}){
-      const qs=new URLSearchParams(params).toString();
-      const r=await fetch(qs?`${path}?${qs}`:path,{signal:AbortSignal.timeout(10000)});
-      if(!r.ok)throw new Error('HTTP '+r.status);
-      return r.json();
-    }
+async function triggerUpdate(){
+  const btn=document.getElementById('updateBtn');
+  btn.disabled=true;btn.textContent='Mise à jour...';
+  try{const r=await fetch('/api/update/');showToast(r.status===202?'Mise à jour lancée !':'Erreur serveur');}
+  catch{showToast('Serveur inaccessible');}
+  setTimeout(()=>{btn.disabled=false;btn.textContent='Mettre à jour';},3000);
+}
 
-    async function checkServer(){
-      try{await api('/api/get/');document.getElementById('statusDot').className='status-dot online';document.getElementById('statusText').textContent='En ligne';return true}
-      catch{document.getElementById('statusDot').className='status-dot';document.getElementById('statusText').textContent='Hors ligne';return false}
-    }
+function renderPagination(type,total,currentPage,onGo){
+  const el=document.getElementById(type+'Pagination');
+  const totalPages=Math.ceil(total/PAGE_SIZE);
+  if(totalPages<=1){el.innerHTML='';return;}
+  const s=currentPage*PAGE_SIZE+1,e=Math.min((currentPage+1)*PAGE_SIZE,total);
+  const pages=new Set([0,totalPages-1,currentPage,currentPage-1,currentPage+1].filter(p=>p>=0&&p<totalPages));
+  let sorted=[...pages].sort((a,b)=>a-b),btns='',prev=-1;
+  sorted.forEach(p=>{
+    if(prev!==-1&&p-prev>1) btns+=`<div class="page-btn" style="cursor:default">…</div>`;
+    btns+=`<button class="page-btn ${p===currentPage?'active':''}" onclick="(${onGo})(${p})">${p+1}</button>`;
+    prev=p;
+  });
+  el.innerHTML=`<span>${s.toLocaleString('fr')}–${e.toLocaleString('fr')} sur ${total.toLocaleString('fr')}</span>
+    <div class="page-controls">
+      <button class="page-btn" onclick="(${onGo})(${currentPage-1})" ${currentPage===0?'disabled':''}>‹</button>
+      ${btns}
+      <button class="page-btn" onclick="(${onGo})(${currentPage+1})" ${currentPage>=totalPages-1?'disabled':''}>›</button>
+    </div>`;
+}
 
-    async function fetchStats(){
-      try{
-        const d=await api('/api/get/');
-        document.getElementById('statP').textContent=(d.players_count||0).toLocaleString('fr');
-        document.getElementById('statG').textContent=(d.games_count||0).toLocaleString('fr');
-        document.getElementById('statS').textContent='Actif';document.getElementById('statS').style.color='var(--green)';
-        loadOverview();
-      }catch{
-        document.getElementById('statS').textContent='Inactif';document.getElementById('statS').style.color='var(--red)';
-        ['ovP','ovG'].forEach(id=>document.getElementById(id).innerHTML='<div class="empty">Serveur inaccessible</div>');
-      }
-    }
-
-    async function loadOverview(){
-      try{
-        const d=await api('/api/players/',{per_page:8,sort:'games_desc'});
-        document.getElementById('ovP').innerHTML=d.players.length?d.players.map(p=>`
-          <div onclick="openPlayer('${p.username}')" style="display:flex;align-items:center;gap:9px;padding:9px 11px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
-            <div class="avatar">${p.avatar?`<img src="${p.avatar}" onerror="this.parentNode.textContent='${p.username[0].toUpperCase()}'">`:p.username[0].toUpperCase()}</div>
-            <div style="flex:1"><div style="font-size:.78rem;font-weight:600">${p.username}${p.title?`<span class="ptitle">${p.title}</span>`:''}</div></div>
-            <div style="font-size:.68rem;color:var(--muted)">${(p.games_count||0).toLocaleString('fr')}</div>
-          </div>`).join(''):'<div class="empty">Aucun joueur</div>';
-      }catch(e){document.getElementById('ovP').innerHTML=`<div class="empty">${e.message}</div>`}
-      try{
-        const d=await api('/api/games/',{per_page:8});
-        document.getElementById('ovG').innerHTML=d.games.length?d.games.map(g=>{
-          const badge=g.white_result==='win'?'<span class="badge bw">1-0</span>':g.black_result==='win'?'<span class="badge bl">0-1</span>':'<span class="badge bd">½</span>';
-          const date=g.end_time?new Date(g.end_time*1000).toLocaleDateString('fr'):'';
-          return `<div onclick="openGame('${g.game_id}')" style="display:flex;align-items:center;gap:8px;padding:8px 11px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
-            ${badge}<div style="flex:1;font-size:.75rem">${g.white_id||'?'} <span style="color:var(--muted)">vs</span> ${g.black_id||'?'}</div>
-            <div style="font-size:.65rem;color:var(--muted)">${date}</div></div>`;
-        }).join(''):'<div class="empty">Aucune partie</div>';
-      }catch(e){document.getElementById('ovG').innerHTML=`<div class="empty">${e.message}</div>`}
-    }
-
-    async function loadPlayers(){
-      document.getElementById('pTable').innerHTML='<div class="loading"></div>';
-      try{
-        const d=await api('/api/players/',{page:pPage,per_page:50,search:document.getElementById('pSearch').value,title:document.getElementById('pTitle').value,sort:document.getElementById('pSort').value});
-        document.getElementById('pTotal').textContent=`${d.total.toLocaleString('fr')} joueur(s)`;
-        if(!d.players.length){document.getElementById('pTable').innerHTML='<div class="empty">Aucun joueur</div>';document.getElementById('pPag').innerHTML='';return}
-        document.getElementById('pTable').innerHTML=`<table class="data-table"><thead><tr><th>#</th><th>Joueur</th><th>Titre</th><th>Parties</th><th>Lien</th></tr></thead><tbody>${
-          d.players.map((p,i)=>`<tr onclick="openPlayer('${p.username}')">
-            <td style="color:var(--muted)">${pPage*50+i+1}</td>
-            <td><div class="player-cell"><div class="avatar">${p.avatar?`<img src="${p.avatar}" onerror="this.parentNode.textContent='${p.username[0].toUpperCase()}'">`:p.username[0].toUpperCase()}</div><span style="font-weight:600">${p.username}</span>${p.title?`<span class="ptitle">${p.title}</span>`:''}</div></td>
-            <td>${p.title?`<span class="badge br">${p.title}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
-            <td style="color:var(--gold)">${(p.games_count||0).toLocaleString('fr')}</td>
-            <td><a href="https://chess.com/member/${p.username}" target="_blank" onclick="event.stopPropagation()" style="color:var(--accent);text-decoration:none;font-size:.72rem">↗</a></td>
-          </tr>`).join('')
-        }</tbody></table>`;
-        renderPag('pPag',d.total,d.pages,pPage,p=>{pPage=p;loadPlayers()});
-      }catch(e){document.getElementById('pTable').innerHTML=`<div class="empty">Erreur : ${e.message}</div>`}
-    }
-
-    async function loadGames(){
-      document.getElementById('gTable').innerHTML='<div class="loading"></div>';
-      try{
-        const d=await api('/api/games/',{page:gPage,per_page:50,search:document.getElementById('gSearch').value,result:document.getElementById('gResult').value,time_class:document.getElementById('gTc').value,rated:document.getElementById('gRated').value});
-        document.getElementById('gTotal').textContent=`${d.total.toLocaleString('fr')} partie(s)`;
-        if(!d.games.length){document.getElementById('gTable').innerHTML='<div class="empty">Aucune partie</div>';document.getElementById('gPag').innerHTML='';return}
-        document.getElementById('gTable').innerHTML=`<table class="data-table"><thead><tr><th>Date</th><th>Blancs</th><th>Noirs</th><th>Résultat</th><th>Type</th><th>Cadence</th><th>Statut</th><th>Ouverture</th></tr></thead><tbody>${
-          d.games.map(g=>{
-            const date=g.end_time?new Date(g.end_time*1000).toLocaleDateString('fr'):'—';
-            const badge=g.white_result==='win'?'<span class="badge bw">1-0</span>':g.black_result==='win'?'<span class="badge bl">0-1</span>':'<span class="badge bd">½-½</span>';
-            return `<tr onclick="openGame('${g.game_id}')">
-              <td style="color:var(--muted)">${date}</td>
-              <td onclick="event.stopPropagation();openPlayer('${g.white_id}')" style="cursor:pointer">${g.white_id||'?'}${g.white_rating?` <span style="color:var(--muted);font-size:.68rem">(${g.white_rating})</span>`:''}
-              </td><td onclick="event.stopPropagation();openPlayer('${g.black_id}')" style="cursor:pointer">${g.black_id||'?'}${g.black_rating?` <span style="color:var(--muted);font-size:.68rem">(${g.black_rating})</span>`:''}
-              </td><td>${badge}</td><td style="text-transform:capitalize;color:var(--muted)">${g.time_class||'—'}</td>
-              <td style="color:var(--muted)">${fmtTc(g.time_control)}</td>
-              <td>${g.rated?'<span class="badge br">Classé</span>':'<span class="badge bc">Amical</span>'}</td>
-              <td style="color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis">${g.opening||g.eco||'—'}</td>
-            </tr>`;
-          }).join('')
-        }</tbody></table>`;
-        renderPag('gPag',d.total,d.pages,gPage,p=>{gPage=p;loadGames()});
-      }catch(e){document.getElementById('gTable').innerHTML=`<div class="empty">Erreur : ${e.message}</div>`}
-    }
-
-    function renderPag(elId,total,pages,current,cb){
-      const el=document.getElementById(elId);
-      if(pages<=1){el.innerHTML='';return}
-      const s=current*50+1,e=Math.min((current+1)*50,total);
-      const range=[...new Set([0,current-1,current,current+1,pages-1])].filter(p=>p>=0&&p<pages).sort((a,b)=>a-b);
-      let btns='',prev=-1;
-      for(const p of range){
-        if(prev!==-1&&p-prev>1)btns+=`<span style="color:var(--muted);padding:0 4px">…</span>`;
-        btns+=`<button class="page-btn ${p===current?'active':''}" onclick="(${cb.toString()})(${p})">${p+1}</button>`;
-        prev=p;
-      }
-      el.innerHTML=`<span>${s.toLocaleString('fr')}–${e.toLocaleString('fr')} sur ${total.toLocaleString('fr')}</span>
-        <div class="page-controls">
-          <button class="page-btn" onclick="(${cb.toString()})(${current-1})" ${current===0?'disabled':''}>‹</button>
-          ${btns}
-          <button class="page-btn" onclick="(${cb.toString()})(${current+1})" ${current>=pages-1?'disabled':''}>›</button>
-        </div>`;
-    }
-
-    async function openPlayer(u){
-      if(!u||u==='?')return;
-      document.getElementById('playerModal').classList.add('open');
-      document.getElementById('mName').textContent=u;document.getElementById('mMeta').textContent='Chargement…';
-      document.getElementById('mStats').innerHTML='';document.getElementById('mGTab').innerHTML='<div class="loading"></div>';
-      try{
-        const p=await api(`/api/players/${u}/`);
-        const av=document.getElementById('mAv');
-        av.innerHTML=p.avatar?`<img src="${p.avatar}" onerror="this.parentNode.textContent='${u[0].toUpperCase()}'">`:u[0].toUpperCase();
-        document.getElementById('mName').innerHTML=u+(p.title?`<span class="ptitle">${p.title}</span>`:'');
-        document.getElementById('mMeta').textContent=`ID ${p.player_id||'—'}${p.country?' · '+p.country:''}`;
-        const tot=p.total||0,wins=p.wins||0,draws=p.draws||0,losses=tot-wins-draws;
-        const wp=tot?(wins/tot*100).toFixed(1):0,dp=tot?(draws/tot*100).toFixed(1):0,lp=tot?(losses/tot*100).toFixed(1):0;
-        document.getElementById('mStats').innerHTML=`
-          <div class="mstat"><div class="mstat-v">${tot.toLocaleString('fr')}</div><div class="mstat-l">Parties</div></div>
-          <div class="mstat"><div class="mstat-v" style="color:var(--green)">${wins.toLocaleString('fr')}</div><div class="mstat-l">Victoires</div></div>
-          <div class="mstat"><div class="mstat-v" style="color:var(--red)">${losses.toLocaleString('fr')}</div><div class="mstat-l">Défaites</div></div>
-          <div class="mstat"><div class="mstat-v">${p.bullet||0}</div><div class="mstat-l">Bullet</div></div>
-          <div class="mstat"><div class="mstat-v">${p.blitz||0}</div><div class="mstat-l">Blitz</div></div>
-          <div class="mstat"><div class="mstat-v">${p.rapid||0}</div><div class="mstat-l">Rapid</div></div>
-          ${tot?`<div class="mstat" style="grid-column:1/-1">
-            <div style="display:flex;justify-content:space-between;font-size:.62rem;margin-bottom:5px">
-              <span style="color:var(--green)">${wp}% V</span><span style="color:var(--draw)">${dp}% N</span><span style="color:var(--red)">${lp}% D</span>
-            </div><div class="rbar"><div class="rw" style="width:${wp}%"></div><div class="rd" style="width:${dp}%"></div><div class="rl" style="width:${lp}%"></div></div>
-          </div>`:''}`;
-        document.getElementById('mITab').innerHTML=`
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:.78rem;line-height:1.8">
-            <div><span style="color:var(--muted)">Username:</span> ${p.username}</div>
-            <div><span style="color:var(--muted)">Titre:</span> ${p.title||'—'}</div>
-            <div><span style="color:var(--muted)">ID:</span> ${p.player_id||'—'}</div>
-            <div><span style="color:var(--muted)">Pays:</span> ${p.country||'—'}</div>
-            ${p.joined?`<div><span style="color:var(--muted)">Inscrit:</span> ${new Date(p.joined*1000).toLocaleDateString('fr')}</div>`:''}
-            ${p.last_online?`<div><span style="color:var(--muted)">Dernière conn.:</span> ${new Date(p.last_online*1000).toLocaleDateString('fr')}</div>`:''}
-          </div>
-          <div style="margin-top:14px"><a href="https://chess.com/member/${p.username}" target="_blank" class="btn btn-ghost" style="font-size:.72rem">Voir sur Chess.com ↗</a></div>`;
-        loadPlayerGames(u,0);
-      }catch(e){document.getElementById('mMeta').textContent='Erreur : '+e.message}
-    }
-
-    async function loadPlayerGames(u,page){
-      document.getElementById('mGTab').innerHTML='<div class="loading"></div>';
-      try{
-        const d=await api(`/api/players/${u}/games/`,{page,per_page:20});
-        if(!d.games.length){document.getElementById('mGTab').innerHTML='<div class="empty">Aucune partie</div>';return}
-        const wrap=document.createElement('div');
-        wrap.innerHTML=`<table class="data-table" style="font-size:.72rem"><thead><tr><th>Date</th><th>Adversaire</th><th>Couleur</th><th>Résultat</th><th>Type</th></tr></thead><tbody>${
-          d.games.map(g=>{
-            const isW=g.white_id===u,opp=isW?g.black_id:g.white_id,res=isW?g.white_result:g.black_result;
-            const badge=res==='win'?'<span class="badge bw">Victoire</span>':['agreed','stalemate','repetition','timevsinsufficient','50move'].includes(res)?'<span class="badge bd">Nulle</span>':'<span class="badge bl">Défaite</span>';
-            const date=g.end_time?new Date(g.end_time*1000).toLocaleDateString('fr'):'—';
-            return `<tr onclick="openGame('${g.game_id}')">
-              <td style="color:var(--muted)">${date}</td>
-              <td onclick="event.stopPropagation();openPlayer('${opp||''}')" style="color:var(--accent);cursor:pointer">${opp||'?'}</td>
-              <td>${isW?'♔ Blancs':'♚ Noirs'}</td><td>${badge}</td>
-              <td style="text-transform:capitalize;color:var(--muted)">${g.time_class||'—'}</td>
-            </tr>`;
-          }).join('')
-        }</tbody></table>`;
-        if(d.pages>1){
-          const pag=document.createElement('div');pag.className='pagination';pag.style.marginTop='8px';
-          pag.innerHTML=`<span style="font-size:.68rem;color:var(--muted)">${d.total.toLocaleString('fr')} parties</span>
-            <div class="page-controls">
-              <button class="page-btn" onclick="loadPlayerGames('${u}',${page-1})" ${page===0?'disabled':''}>‹</button>
-              <span style="font-size:.68rem;color:var(--muted);padding:0 8px">Page ${page+1}/${d.pages}</span>
-              <button class="page-btn" onclick="loadPlayerGames('${u}',${page+1})" ${page>=d.pages-1?'disabled':''}>›</button>
-            </div>`;
-          wrap.appendChild(pag);
-        }
-        document.getElementById('mGTab').innerHTML='';document.getElementById('mGTab').appendChild(wrap);
-      }catch(e){document.getElementById('mGTab').innerHTML=`<div class="empty">Erreur : ${e.message}</div>`}
-    }
-
-    async function openGame(gid){
-      if(!gid)return;
-      document.getElementById('gameModal').classList.add('open');
-      document.getElementById('gmTitle').textContent='Chargement…';document.getElementById('gmBody').innerHTML='<div class="loading"></div>';
-      try{
-        const g=await api(`/api/games/${gid}/`);
-        const w=g.white_id||'?',b=g.black_id||'?';
-        const score=g.white_result==='win'?'1 — 0':g.black_result==='win'?'0 — 1':'½ — ½';
-        document.getElementById('gmTitle').textContent=`${w} vs ${b}`;
-        document.getElementById('gmMeta').textContent=`${g.end_time?new Date(g.end_time*1000).toLocaleString('fr'):'—'} · ${g.time_class||''} · ${g.rated?'Classé':'Amical'}`;
-        const pgn=g.pgn?`<div style="margin-top:14px"><div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:7px">PGN</div><div class="pgn-box">${g.pgn.replace(/\[.*?\]\s*/gs,'').trim()}</div></div>`:'';
-        document.getElementById('gmBody').innerHTML=`
-          <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center">
-            <div class="mstat"><div style="font-size:.62rem;color:var(--muted);margin-bottom:3px">♔ Blancs</div><div style="font-size:.95rem;font-weight:700;cursor:pointer" onclick="openPlayer('${w}')">${w}</div>${g.white_rating?`<div style="font-size:.68rem;color:var(--muted)">Elo ${g.white_rating}</div>`:''}</div>
-            <div style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;color:var(--gold);text-align:center;white-space:nowrap">${score}</div>
-            <div class="mstat" style="text-align:right"><div style="font-size:.62rem;color:var(--muted);margin-bottom:3px">Noirs ♚</div><div style="font-size:.95rem;font-weight:700;cursor:pointer" onclick="openPlayer('${b}')">${b}</div>${g.black_rating?`<div style="font-size:.68rem;color:var(--muted)">Elo ${g.black_rating}</div>`:''}</div>
-          </div>
-          <div style="margin-top:12px;font-size:.72rem;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap">
-            <span>Type : <b style="color:var(--white)">${g.time_class||'—'}</b></span>
-            <span>Cadence : <b style="color:var(--white)">${fmtTc(g.time_control)}</b></span>
-            ${g.eco?`<span>ECO : <b style="color:var(--white)">${g.eco}</b></span>`:''}
-            ${g.opening?`<span>Ouverture : <b style="color:var(--white)">${g.opening}</b></span>`:''}
-          </div>
-          ${pgn}
-          <div style="margin-top:14px"><a href="${g.url}" target="_blank" class="btn btn-ghost" style="font-size:.72rem">Analyser sur Chess.com ↗</a></div>`;
-      }catch(e){document.getElementById('gmBody').innerHTML=`<div class="empty">Erreur : ${e.message}</div>`}
-    }
-
-    async function fetchLogs(){
-      const el=document.getElementById('logsBox');el.innerHTML='<div class="loading"></div>';
-      try{
-        const r=await fetch('/api/logs/last/',{signal:AbortSignal.timeout(5000)});
-        if(!r.ok)throw new Error('HTTP '+r.status);
-        const text=await r.text();
-        el.innerHTML=text.split('\n').filter(l=>l.trim()).map(l=>{
-          const c=l.includes('ERROR')?'var(--red)':l.includes('WARNING')?'var(--gold)':l.includes('INFO')?'var(--white)':'var(--muted)';
-          return `<div style="color:${c};padding:1px 0;border-bottom:1px solid rgba(42,42,53,.3)">${l}</div>`;
-        }).join('')||'<div class="empty">Aucun log</div>';
-        el.scrollTop=el.scrollHeight;
-      }catch(e){el.innerHTML=`<div style="color:var(--red)">Erreur : ${e.message}</div>`}
-    }
-
-    async function triggerUpdate(){
-      const btn=document.getElementById('updateBtn');btn.disabled=true;btn.textContent='Mise à jour…';
-      try{const r=await fetch('/api/update/');showToast(r.status===202?'Mise à jour lancée !':'Erreur serveur');}
-      catch{showToast('Serveur inaccessible')}
-      setTimeout(()=>{btn.disabled=false;btn.textContent='Mettre à jour'},4000);
-    }
-
-    function switchTab(btn,tabId){
-      btn.closest('.tabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');
-      btn.closest('.modal-body').querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
-      document.getElementById(tabId).classList.add('active');
-    }
-
-    function fmtTc(tc){
-      if(!tc)return'—';
-      if(tc.includes('+'))return`${Math.floor(tc.split('+')[0]/60)}min+${tc.split('+')[1]}s`;
-      if(!isNaN(tc))return`${Math.floor(tc/60)}min`;return tc;
-    }
-
-    function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000)}
+function formatTC(tc){
+  if(!tc) return '—';
+  if(tc.includes('+')) return `${Math.floor(tc.split('+')[0]/60)}min+${tc.split('+')[1]}s`;
+  if(!isNaN(tc)) return `${Math.floor(tc/60)}min`;
+  return tc;
+}
+function debounce(fn,ms){let t;return(...args)=>{clearTimeout(t);t=setTimeout(()=>fn(...args),ms);};}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+function closeModal(e){if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');}
+function switchTab(btn,id){
+  btn.closest('.modal-body').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.closest('.modal-body').querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(id).classList.add('active');
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'));});
 </script>
 </body>
 </html>
