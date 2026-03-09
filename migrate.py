@@ -1,145 +1,135 @@
-"""
-migrate.py — Migration des fichiers JSON vers SQLite
-Usage : python migrate.py [--players-dir players/] [--top-players top_players.json]
-"""
+import os, json, sqlite3, time, logging, sys
 
-import os
-import json
-import argparse
-import time
-from database import get_conn, init_db, upsert_player, upsert_game
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler(sys.stdout)])
+logger = logging.getLogger('migrate')
 
+DB_FILE = 'chess.db'
+PLAYERS_DIR = 'players/'
+BATCH_SIZE = 20
 
-def migrate(players_dir: str = 'players/', top_players_file: str = 'top_players.json'):
-    print("=" * 60)
-    print("  Migration JSON → SQLite")
-    print("=" * 60)
+def init_db(conn):
+    conn.executescript("""
+PRAGMA journal_mode = OFF;
+PRAGMA synchronous  = OFF;
+PRAGMA cache_size   = -128000;
+PRAGMA temp_store   = MEMORY;
+PRAGMA locking_mode = EXCLUSIVE;
+CREATE TABLE IF NOT EXISTS players (
+    username TEXT PRIMARY KEY, player_id INTEGER, title TEXT,
+    avatar TEXT, api_id TEXT, games_count INTEGER DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS games (
+    game_id TEXT PRIMARY KEY, url TEXT, pgn TEXT, time_control TEXT,
+    time_class TEXT, rated INTEGER, end_time INTEGER,
+    white_username TEXT, white_rating INTEGER, white_result TEXT,
+    black_username TEXT, black_rating INTEGER, black_result TEXT,
+    opening_eco TEXT, opening_name TEXT
+);
+CREATE TABLE IF NOT EXISTS player_games (
+    username TEXT, game_id TEXT, PRIMARY KEY (username, game_id)
+);
+""")
+    conn.commit()
 
-    # Initialiser la DB
-    print("\n[1/3] Initialisation de la base de données...")
-    init_db()
-    print("      ✓ Schéma créé")
+def add_indexes(conn):
+    logger.info("Création des index...")
+    conn.executescript("""
+CREATE INDEX IF NOT EXISTS idx_games_end_time    ON games(end_time DESC);
+CREATE INDEX IF NOT EXISTS idx_games_white       ON games(white_username);
+CREATE INDEX IF NOT EXISTS idx_games_black       ON games(black_username);
+CREATE INDEX IF NOT EXISTS idx_games_time_class  ON games(time_class);
+CREATE INDEX IF NOT EXISTS idx_games_rated       ON games(rated);
+CREATE INDEX IF NOT EXISTS idx_player_games_user ON player_games(username);
+CREATE INDEX IF NOT EXISTS idx_players_title     ON players(title);
+""")
+    conn.commit()
 
-    conn = get_conn()
+def extract_opening(pgn):
+    eco, name = '', ''
+    if not pgn:
+        return eco, name
+    for line in pgn.splitlines():
+        if line.startswith('[ECO '):       eco  = line[6:-2]
+        elif line.startswith('[Opening '): name = line[10:-2]
+        if eco and name: break
+    return eco, name
 
-    # ── Joueurs depuis top_players.json ──────────────────────────
-    print("\n[2/3] Import des joueurs depuis top_players.json...")
-    players_migrated = 0
-
-    if os.path.exists(top_players_file):
-        with open(top_players_file, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-
-        players_list = data.get('players', [])
-        total = len(players_list)
-
-        for i, player in enumerate(players_list, 1):
-            try:
-                upsert_player(conn, player)
-                players_migrated += 1
-            except Exception as e:
-                print(f"      ✗ Erreur joueur {player.get('username')}: {e}")
-
-            if i % 500 == 0 or i == total:
-                conn.commit()
-                pct = i / total * 100
-                bar = '█' * int(pct / 2) + '░' * (50 - int(pct / 2))
-                print(f"\r      [{bar}] {i}/{total} ({pct:.0f}%)", end='', flush=True)
-
-        conn.commit()
-        print(f"\n      ✓ {players_migrated} joueurs importés")
-    else:
-        print(f"      ⚠ {top_players_file} introuvable, passage à l'étape suivante")
-
-    # ── Parties depuis players/*.json ────────────────────────────
-    print("\n[3/3] Import des parties depuis players/...")
-
-    if not os.path.exists(players_dir):
-        print(f"      ✗ Dossier '{players_dir}' introuvable")
-        conn.close()
+def migrate():
+    if not os.path.isdir(PLAYERS_DIR):
+        logger.error(f"Dossier '{PLAYERS_DIR}' introuvable.")
+        sys.exit(1)
+    files = [f for f in os.listdir(PLAYERS_DIR) if f.endswith('.json')]
+    if not files:
+        logger.warning("Aucun fichier JSON trouvé dans players/")
         return
 
-    files = [f for f in os.listdir(players_dir) if f.endswith('.json')]
-    total_files = len(files)
-    total_games = 0
-    total_new = 0
-    start = time.time()
+    logger.info(f"{len(files)} fichiers joueurs à migrer → {DB_FILE}")
+    conn = sqlite3.connect(DB_FILE)
+    init_db(conn)
 
-    for file_idx, filename in enumerate(files, 1):
-        username = filename.replace('.json', '')
-        filepath = os.path.join(players_dir, filename)
+    total_games, total_players, start = 0, 0, time.time()
+    game_rows_buf, pg_rows_buf, player_rows_buf = [], [], []
 
+    for i, fname in enumerate(files, 1):
+        path = os.path.join(PLAYERS_DIR, fname)
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-
-            # Upsert du joueur si pas déjà fait
-            player_info = data.get('player_info', {})
-            if player_info:
-                try:
-                    upsert_player(conn, player_info)
-                except Exception:
-                    pass
-
-            games = data.get('games', [])
-            file_new = 0
-
-            for game in games:
-                try:
-                    upsert_game(conn, game, username)
-                    file_new += 1
-                except Exception:
-                    pass  # Doublon ou données corrompues
-
-            conn.commit()
-            total_games += len(games)
-            total_new += file_new
-
-            # Progression
-            elapsed = time.time() - start
-            rate = total_games / elapsed if elapsed > 0 else 0
-            pct = file_idx / total_files * 100
-            bar = '█' * int(pct / 2) + '░' * (50 - int(pct / 2))
-            eta = (total_files - file_idx) * (elapsed / file_idx) if file_idx > 0 else 0
-            print(
-                f"\r      [{bar}] {file_idx}/{total_files} | "
-                f"{total_games:,} parties | "
-                f"{rate:.0f}/s | "
-                f"ETA {int(eta//60)}m{int(eta%60):02d}s",
-                end='', flush=True
-            )
-
-        except json.JSONDecodeError as e:
-            print(f"\n      ✗ JSON corrompu : {filename} ({e})")
         except Exception as e:
-            print(f"\n      ✗ Erreur sur {filename}: {e}")
+            logger.error(f"Lecture échouée {fname}: {e}")
+            continue
 
-    conn.close()
+        player_info = data.get('player_info', {})
+        games       = data.get('games', [])
+        username    = player_info.get('username') or fname.replace('.json', '')
+
+        for g in games:
+            url     = g.get('url', '')
+            game_id = url.rstrip('/').split('/')[-1]
+            if not game_id: continue
+            eco, opening = extract_opening(g.get('pgn', ''))
+            white, black = g.get('white', {}), g.get('black', {})
+            game_rows_buf.append((
+                game_id, url, g.get('pgn',''), g.get('time_control',''),
+                g.get('time_class',''), 1 if g.get('rated') else 0, g.get('end_time'),
+                white.get('username',''), white.get('rating'), white.get('result',''),
+                black.get('username',''), black.get('rating'), black.get('result',''),
+                eco, opening
+            ))
+            pg_rows_buf.append((username, game_id))
+
+        player_rows_buf.append((
+            username, player_info.get('player_id'), player_info.get('title',''),
+            player_info.get('avatar',''), player_info.get('@id',''), len(games)
+        ))
+        total_players += 1
+
+        if i % BATCH_SIZE == 0 or i == len(files):
+            conn.executemany("INSERT OR IGNORE INTO games VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", game_rows_buf)
+            conn.executemany("INSERT OR IGNORE INTO player_games VALUES (?,?)", pg_rows_buf)
+            conn.executemany("INSERT OR REPLACE INTO players VALUES (?,?,?,?,?,?)", player_rows_buf)
+            conn.commit()
+            total_games += len(game_rows_buf)
+            game_rows_buf, pg_rows_buf, player_rows_buf = [], [], []
+
+            elapsed = time.time() - start
+            rate    = total_games / elapsed if elapsed else 0
+            eta     = ((len(files) - i) / i) * elapsed if i > 0 else 0
+            logger.info(f"  {i}/{len(files)} joueurs | {total_games:,} parties | {rate:,.0f} parties/s | ETA ~{eta/60:.1f} min")
+
+    logger.info("Mise à jour compteurs de parties...")
+    conn.execute("UPDATE players SET games_count = (SELECT COUNT(*) FROM player_games WHERE player_games.username = players.username)")
+    conn.commit()
+
+    add_indexes(conn)
 
     elapsed = time.time() - start
-    print(f"\n\n{'=' * 60}")
-    print(f"  Migration terminée en {int(elapsed//60)}m{int(elapsed%60):02d}s")
-    print(f"  Joueurs : {players_migrated:,}")
-    print(f"  Parties : {total_games:,} lues, {total_new:,} insérées")
-    print(f"  Base    : chess.db")
-    print(f"{'=' * 60}\n")
-
-    # Stats finales
-    conn2 = get_conn()
-    nb_games   = conn2.execute("SELECT COUNT(*) FROM games").fetchone()[0]
-    nb_players = conn2.execute("SELECT COUNT(*) FROM players").fetchone()[0]
-    db_size    = os.path.getsize('chess.db') / 1024 / 1024
-    conn2.close()
-
-    print(f"  Vérification DB :")
-    print(f"    {nb_players:,} joueurs")
-    print(f"    {nb_games:,} parties")
-    print(f"    {db_size:.1f} MB sur disque\n")
-
+    nb_games   = conn.execute("SELECT COUNT(*) FROM games").fetchone()[0]
+    nb_players = conn.execute("SELECT COUNT(*) FROM players").fetchone()[0]
+    logger.info(f"Terminé en {elapsed/60:.1f} min")
+    logger.info(f"  {nb_games:,} parties | {nb_players:,} joueurs")
+    logger.info(f"  Taille DB : {os.path.getsize(DB_FILE)/1e9:.2f} Go")
+    conn.close()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Migration JSON → SQLite')
-    parser.add_argument('--players-dir',  default='players/')
-    parser.add_argument('--top-players',  default='top_players.json')
-    args = parser.parse_args()
-    migrate(args.players_dir, args.top_players)
+    migrate()
