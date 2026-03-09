@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS player_games (
 def add_indexes(conn):
     logger.info("Création des index...")
     conn.executescript("""
+PRAGMA locking_mode = NORMAL;
+PRAGMA journal_mode = WAL;
 CREATE INDEX IF NOT EXISTS idx_games_end_time    ON games(end_time DESC);
 CREATE INDEX IF NOT EXISTS idx_games_white       ON games(white_username);
 CREATE INDEX IF NOT EXISTS idx_games_black       ON games(black_username);
