@@ -19,6 +19,7 @@ DB_FILE = 'chess.db'
 
 def get_db():
     conn = sqlite3.connect(DB_FILE, timeout=30, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode = WAL")
     conn.execute("PRAGMA synchronous = NORMAL")
     conn.execute("PRAGMA cache_size = -32000")
@@ -50,9 +51,8 @@ CREATE INDEX IF NOT EXISTS idx_players_title     ON players(title);
 """)
     conn.commit()
 
-def get_existing_ids(conn):
-    rows = conn.execute("SELECT game_id FROM games").fetchall()
-    return set(r[0] for r in rows)
+def game_exists(conn, game_id):
+    return conn.execute("SELECT 1 FROM games WHERE game_id=?", (game_id,)).fetchone() is not None
 
 def extract_opening(pgn):
     eco, name = '', ''
@@ -105,25 +105,26 @@ def insert_games(conn, username, new_games):
     conn.commit()
     return len(game_rows)
 
-def fetch_player_games(player, existing_ids):
+def fetch_player_games(conn, player):
     new_games = []
     username  = player.get('username', 'inconnu')
     try:
-        logger.info(f"Début du traitement pour {username}")
         archives = requests.get(
             player["@id"] + "/games/archives", headers=HEADERS, timeout=10
         ).json().get("archives", [])
         logger.info(f"{username}: {len(archives)} mois à traiter")
-        for i, url in enumerate(archives, 1):
-            if i == len(archives) // 2 or i == len(archives):
-                logger.info(f"{username}: Mois {i}/{len(archives)} traités")
+        for i, url in enumerate(reversed(archives), 1):
             try:
                 month_games = requests.get(url, headers=HEADERS, timeout=10).json().get("games", [])
+                new_in_month = 0
                 for game in month_games:
                     game_id = game["url"].split('/')[-1]
-                    if game_id not in existing_ids:
+                    if not game_exists(conn, game_id):
                         new_games.append(game)
-                        existing_ids.add(game_id)
+                        new_in_month += 1
+                if new_in_month == 0 and i > 2:
+                    logger.info(f"{username}: mois déjà à jour, arrêt anticipé")
+                    break
             except Exception as e:
                 logger.error(f"Erreur sur le mois {url} pour {username}: {e}")
                 continue
@@ -135,9 +136,6 @@ def fetch_player_games(player, existing_ids):
 def process_players(players_list):
     conn = get_db()
     ensure_tables(conn)
-    logger.info("Chargement des parties existantes en mémoire...")
-    existing_ids = get_existing_ids(conn)
-    logger.info(f"{len(existing_ids):,} parties déjà en DB")
     logger.info(f"Début du traitement de {len(players_list)} joueurs")
     start_time = datetime.now()
     total_new  = 0
@@ -147,7 +145,7 @@ def process_players(players_list):
             logger.info(f"Progression: {i}/{len(players_list)} joueurs traités | {total_new:,} nouvelles parties")
         try:
             upsert_player(conn, player)
-            new_games = fetch_player_games(player, existing_ids)
+            new_games = fetch_player_games(conn, player)
             if new_games:
                 inserted = insert_games(conn, username, new_games)
                 total_new += inserted
@@ -159,8 +157,10 @@ def process_players(players_list):
     logger.info(f"Traitement terminé en {duration}. {total_new:,} nouvelles parties ajoutées en DB")
 
 def main():
-    import json
-    with open('top_players.json', 'r', encoding='utf-8') as f:
-        players = json.load(f)["players"]
+    conn = get_db()
+    rows = conn.execute("SELECT username, api_id, title, avatar, player_id FROM players").fetchall()
+    players = [{"@id": r["api_id"], "username": r["username"], "title": r["title"], "avatar": r["avatar"], "player_id": r["player_id"]} for r in rows]
+    conn.close()
+    logger.info(f"Scraping de {len(players)} joueurs depuis la DB")
     process_players(players)
     logger.info("Scraping terminé avec succès !")

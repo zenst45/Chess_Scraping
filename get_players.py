@@ -79,7 +79,7 @@ def main():
         logger.info(f"Total joueurs: {len(players['players'])}")
 
         # Lancer la récupération des parties
-        others.scan_games()
+        # others.scan_games()  # désactivé, géré par server.py
         return True
 
     except Exception as e:

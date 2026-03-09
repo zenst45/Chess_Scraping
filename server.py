@@ -131,7 +131,24 @@ def api_player_detail(username):
             SUM(CASE WHEN white_result IN ('agreed','stalemate','repetition','timevsinsufficient','50move','insufficient') THEN 1 ELSE 0 END) AS draws
         FROM games WHERE white_username=? OR black_username=?
     """, (username, username, username, username)).fetchone()
+    tc = db.execute("""
+        SELECT time_class, COUNT(*) as cnt
+        FROM games WHERE white_username=? OR black_username=?
+        GROUP BY time_class
+    """, (username, username)).fetchall()
+    tc_map = {row["time_class"]: row["cnt"] for row in tc}
     db.close()
+    country = None
+    try:
+        import urllib.request as _ur, json as _j
+        req = _ur.Request(dict(player)["api_id"], headers={"User-Agent": "ChessArchive/1.0"})
+        with _ur.urlopen(req, timeout=3) as r:
+            data = _j.loads(r.read())
+            country_url = data.get("country", "")
+            if country_url:
+                country = country_url.split("/")[-1]
+    except Exception:
+        pass
     return jsonify({
         "player": dict(player),
         "stats": {
@@ -139,6 +156,10 @@ def api_player_detail(username):
             "wins":   stats["wins"]   or 0,
             "draws":  stats["draws"]  or 0,
             "losses": (stats["total"] or 0) - (stats["wins"] or 0) - (stats["draws"] or 0),
+            "bullet": tc_map.get("bullet", 0),
+            "blitz":  tc_map.get("blitz",  0),
+            "rapid":  tc_map.get("rapid",  0),
+            "country": country,
         }
     })
 
@@ -170,8 +191,19 @@ def get_last_logs():
 @app.route('/api/update/', methods=['GET'])
 def update_players():
     def background_task():
-        get_players.main()
-        get_games.main()
+        import logging
+        log = logging.getLogger('chess-scraping')
+        try:
+            log.info("Mise à jour des joueurs...")
+            get_players.main()
+        except Exception as e:
+            log.error(f"get_players: {e}", exc_info=True)
+        try:
+            log.info("Scraping des parties...")
+            get_games.main()
+            log.info("Scraping terminé")
+        except Exception as e:
+            log.error(f"get_games: {e}", exc_info=True)
     Thread(target=background_task).start()
     return "Mise à jour lancée en arrière-plan", 202
 
