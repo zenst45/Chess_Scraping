@@ -208,4 +208,4 @@ def update_players():
     return "Mise à jour lancée en arrière-plan", 202
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=12346, debug=False, threaded=True)
+    app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
